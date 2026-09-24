@@ -9,6 +9,7 @@ import com.x8bit.bitwarden.data.tools.passgen.model.GeneratedPassgenResult
 import com.x8bit.bitwarden.data.tools.passgen.model.PassgenOptions
 import com.x8bit.bitwarden.data.tools.passgen.model.PassgenSettings
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.security.SecureRandom
@@ -25,7 +26,9 @@ class PassgenRepositoryImpl(
     private val clock: Clock,
     private val dispatcherManager: DispatcherManager,
 ) : PassgenRepository {
-    private val scope = CoroutineScope(dispatcherManager.io)
+    // A failed child coroutine must not cancel this scope (and every other coroutine
+    // launched on it); SupervisorJob isolates failures per-child.
+    private val scope = CoroutineScope(SupervisorJob() + dispatcherManager.io)
     private val secureRandom = SecureRandom()
     private var lastRecordedPassword: String? = null
 
