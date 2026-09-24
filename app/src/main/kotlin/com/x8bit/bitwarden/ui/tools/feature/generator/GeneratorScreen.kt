@@ -344,7 +344,7 @@ private fun ModalAppBar(
 
 //region ScrollContent and Static Items
 
-@Suppress("LongMethod")
+@Suppress("LongMethod", "CyclomaticComplexMethod") // PASSGEN: added PassgenMainType branch
 @Composable
 private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
     state: GeneratorState,
@@ -530,6 +530,8 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
                                     .fillMaxWidth(),
                             )
                         }
+
+                        is PassgenMainType -> Unit // PASSGEN: never shown in modal mode
                     }
                 }
             }
@@ -592,6 +594,8 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
                     )
                 }
             }
+
+            is PassgenMainType -> Unit // PASSGEN: wired in next task
         }
 
         item {
@@ -665,7 +669,7 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.GeneratedStringItem(
     )
 }
 
-@Suppress("MaxLineLength", "LongMethod")
+@Suppress("MaxLineLength", "LongMethod", "CyclomaticComplexMethod") // PASSGEN: added PASSGEN branch
 @Composable
 private fun CoachMarkScope<ExploreGeneratorCoachMark>.MainStateOptionsItem(
     selectedType: GeneratorState.MainType,
@@ -702,6 +706,8 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.MainStateOptionsItem(
                         }
 
                         GeneratorState.MainTypeOption.USERNAME -> true
+
+                        GeneratorState.MainTypeOption.PASSGEN -> passcodePolicyOverride == null // PASSGEN:
                     },
                     testTag = mainOptionType.testTag,
                 )

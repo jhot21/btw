@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fork-only strings for the passgen generator type. See FORK.md. -->
+<resources>
+    <string name="passgen">Passgen</string>
+    <string name="passgen_version">Algorithm</string>
+    <string name="passgen_version_2">v2</string>
+    <string name="passgen_version_3">v3</string>
+    <string name="passgen_passphrase">Passphrase</string>
+    <string name="passgen_passphrase_hint">Leave empty to use a random passphrase</string>
+    <string name="passgen_passphrase_used">Random passphrase used</string>
+    <string name="passgen_passphrase_used_hint">Save this to regenerate the same password later</string>
+    <string name="passgen_salt">Salt</string>
+    <string name="passgen_salt_hint">Stored on this device only. Back it up: without it, passwords can\'t be regenerated.</string>
+    <string name="passgen_custom_specials">Custom special characters</string>
+    <string name="passgen_custom_specials_hint">Empty uses !@#$%^&amp;*</string>
+    <string name="passgen_avoid_ambiguous">Avoid ambiguous characters</string>
+    <string name="passgen_custom_ambiguous">Custom ambiguous characters</string>
+    <string name="passgen_custom_ambiguous_hint">Empty uses Il1O05S</string>
+    <string name="passgen_copy_passphrase">Copy passphrase</string>
+    <string name="passgen_copy_salt">Copy salt</string>
+</resources>

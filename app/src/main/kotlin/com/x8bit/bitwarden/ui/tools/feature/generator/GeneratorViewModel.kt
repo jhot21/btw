@@ -260,6 +260,8 @@ class GeneratorViewModel @Inject constructor(
             is GeneratorAction.MainType.Username.UsernameType.ForwardedEmailAlias.SimpleLogin.SelfHostServerUrlChange -> {
                 handleSimpleLoginSelfHostServerUrlChange(action)
             }
+
+            is PassgenAction -> Unit // PASSGEN: wired in next task
         }
     }
 
@@ -325,6 +327,7 @@ class GeneratorViewModel @Inject constructor(
 
     private fun handleSaveClick() {
         when (state.selectedType) {
+            is PassgenMainType, // PASSGEN:
             is GeneratorState.MainType.Passphrase,
             is GeneratorState.MainType.Password,
                 -> {
@@ -377,6 +380,8 @@ class GeneratorViewModel @Inject constructor(
                     forceRegeneration = mainType.selectedType !is ForwardedEmailAlias,
                 )
             }
+
+            is PassgenMainType -> Unit // PASSGEN:
         }
     }
 
@@ -463,6 +468,8 @@ class GeneratorViewModel @Inject constructor(
             }
 
             is GeneratorState.MainType.Username -> Unit
+
+            is PassgenMainType -> Unit // PASSGEN:
         }
     }
 
@@ -886,6 +893,8 @@ class GeneratorViewModel @Inject constructor(
                     forceRegeneration = true,
                 )
             }
+
+            GeneratorState.MainTypeOption.PASSGEN -> Unit // PASSGEN: wired in next task
         }
     }
 
@@ -1585,6 +1594,8 @@ class GeneratorViewModel @Inject constructor(
                         }
                     }
                 }
+
+                is PassgenMainType -> Unit // PASSGEN: wired in next task
             }
         }
     }
@@ -1967,6 +1978,12 @@ data class GeneratorState(
         PASSWORD(labelRes = BitwardenString.password, testTag = "password_option"),
         PASSPHRASE(labelRes = BitwardenString.passphrase, testTag = "passphrase_option"),
         USERNAME(labelRes = BitwardenString.username, testTag = "username_option"),
+
+        // PASSGEN:
+        PASSGEN(
+            labelRes = com.x8bit.bitwarden.R.string.passgen,
+            testTag = "passgen_option",
+        ),
     }
 
     /**
