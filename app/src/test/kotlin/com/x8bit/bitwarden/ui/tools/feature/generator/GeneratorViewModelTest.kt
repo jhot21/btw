@@ -2536,6 +2536,22 @@ class GeneratorViewModelTest : BaseViewModelTest() {
         }
 
         @Test
+        fun `process-death restore regenerates stale text with a fresh passphrase`() {
+            val restoredState = initialPasscodeState.copy(
+                generatedText = "stale-generated-text",
+                selectedType = PassgenMainType(salt = "salt"),
+            )
+            val viewModel = createViewModel(state = restoredState)
+
+            assertTrue(viewModel.stateFlow.value.generatedText != "stale-generated-text")
+            assertTrue(
+                (viewModel.stateFlow.value.selectedType as PassgenMainType)
+                    .passphraseUsed
+                    .isNotEmpty(),
+            )
+        }
+
+        @Test
         fun `PASSGEN is not offered in the modal password generator`() {
             val state = GeneratorState(
                 generatedText = "",
