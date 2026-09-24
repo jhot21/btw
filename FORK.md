@@ -136,15 +136,21 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
 ```
 
 Use the F-Droid flavor: it needs no `google-services.json`. The standard flavor's release build does,
-and this fork doesn't ship one. Output: `app/build/outputs/apk/fdroid/release/`. Gradle does not sign
-release builds here, so the APK is unsigned (`*-unsigned.apk`). Sign it with the build-tools from
-`$ANDROID_HOME` (or `~/Library/Android/sdk`), e.g. `BT=~/Library/Android/sdk/build-tools/<version>`:
+and this fork doesn't ship one. Output: `app/build/outputs/apk/fdroid/release/me.jhot.btw-fdroid.apk`.
+Gradle does not sign release builds here, so that APK is unsigned. Sign it with the build-tools from
+`$ANDROID_HOME` (or `~/Library/Android/sdk`):
 
 ```bash
-"$BT/zipalign" -p -f 4 app-fdroid-release-unsigned.apk aligned.apk
+BT="${ANDROID_HOME:-$HOME/Library/Android/sdk}/build-tools/<version>"
+APK=app/build/outputs/apk/fdroid/release/me.jhot.btw-fdroid.apk
+"$BT/zipalign" -p -f 4 "$APK" aligned.apk
 "$BT/apksigner" sign --ks <keystore> --out btw-release.apk aligned.apk
 "$BT/apksigner" verify --verbose btw-release.apk
 ```
 
-The keystore must NOT be committed to the repo. Back it up somewhere safe: if it is lost, installed
-copies cannot be updated in place (a new key means uninstalling first, losing local data).
+`apksigner sign` prompts for the keystore password; never put the password on the command line.
+Add `--ks-key-alias <alias>` only if the keystore holds several keys.
+
+Keep the keystore outside the repository (e.g. `~/.android-signing/`) and never commit it. Back it
+up somewhere safe: if it is lost, installed copies cannot be updated in place (a new key means
+uninstalling first, losing local data).
