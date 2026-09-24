@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.bitwarden.ui.platform.components.button.BitwardenStandardIconButton
 import com.bitwarden.ui.platform.components.card.BitwardenInfoCalloutCard
@@ -99,6 +100,8 @@ fun PassgenContent(
             onValueChange = { onAction(PassgenAction.SaltChange(it)) },
             supportingText = stringResource(R.string.passgen_salt_hint),
             cardStyle = CardStyle.Bottom,
+            // Disables autocorrect/suggestions so the salt can't be silently altered.
+            keyboardType = KeyboardType.Password,
             textFieldTestTag = "PassgenSaltField",
             modifier = Modifier.fillMaxWidth(),
             actions = {
@@ -154,6 +157,8 @@ fun PassgenContent(
                 onValueChange = { onAction(PassgenAction.CustomSpecialsChange(it)) },
                 supportingText = stringResource(R.string.passgen_custom_specials_hint),
                 cardStyle = CardStyle.Middle(),
+                // Disables autocorrect/suggestions so this can't be silently altered.
+                keyboardType = KeyboardType.Password,
                 textFieldTestTag = "PassgenCustomSpecialsField",
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -172,6 +177,8 @@ fun PassgenContent(
                 onValueChange = { onAction(PassgenAction.CustomAmbiguousChange(it)) },
                 supportingText = stringResource(R.string.passgen_custom_ambiguous_hint),
                 cardStyle = CardStyle.Bottom,
+                // Disables autocorrect/suggestions so this can't be silently altered.
+                keyboardType = KeyboardType.Password,
                 textFieldTestTag = "PassgenCustomAmbiguousField",
                 modifier = Modifier.fillMaxWidth(),
             )
