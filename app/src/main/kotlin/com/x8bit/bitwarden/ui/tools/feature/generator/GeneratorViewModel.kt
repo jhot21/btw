@@ -384,7 +384,7 @@ class GeneratorViewModel @Inject constructor(
                 )
             }
 
-            is PassgenMainType -> Unit // PASSGEN:
+            is PassgenMainType -> updateGeneratorMainType { it } // PASSGEN:
         }
     }
 
@@ -733,9 +733,7 @@ class GeneratorViewModel @Inject constructor(
     private fun handleCopyClick() {
         reviewPromptManager.registerGeneratedResultAction()
         clipboardManager.setText(text = state.generatedText)
-        if (state.selectedType is PassgenMainType) { // PASSGEN:
-            passgenRepository.recordCopied(state.generatedText) // PASSGEN:
-        } // PASSGEN:
+        recordPassgenCopy() // PASSGEN:
     }
 
     private fun handleTooltipClick() {
@@ -1928,6 +1926,12 @@ class GeneratorViewModel @Inject constructor(
     //endregion Utility Functions
 
     // PASSGEN: region — fork-only passgen handling, see FORK.md
+    private fun recordPassgenCopy() {
+        if (state.selectedType is PassgenMainType) {
+            passgenRepository.recordCopied(state.generatedText)
+        }
+    }
+
     private fun handlePassgenAction(action: PassgenAction) {
         val current = state.selectedType as? PassgenMainType ?: return
         when (action) {
