@@ -17,6 +17,7 @@ import io.mockk.runs
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -98,5 +99,31 @@ class PassgenRepositoryTest {
                 PasswordHistoryView(password = "pw2", lastUsedDate = clock.instant()),
             )
         }
+    }
+
+    @Test
+    fun `consumePassgenTabRequest returns false when nothing requested`() {
+        assertFalse(repository.consumePassgenTabRequest())
+    }
+
+    @Test
+    fun `consumePassgenTabRequest returns true after a request`() {
+        repository.requestPassgenTab()
+        assertTrue(repository.consumePassgenTabRequest())
+    }
+
+    @Test
+    fun `consumePassgenTabRequest returns false on a second consume`() {
+        repository.requestPassgenTab()
+        repository.consumePassgenTabRequest()
+        assertFalse(repository.consumePassgenTabRequest())
+    }
+
+    @Test
+    fun `repeated requests are consumed once`() {
+        repository.requestPassgenTab()
+        repository.requestPassgenTab()
+        assertTrue(repository.consumePassgenTabRequest())
+        assertFalse(repository.consumePassgenTabRequest())
     }
 }

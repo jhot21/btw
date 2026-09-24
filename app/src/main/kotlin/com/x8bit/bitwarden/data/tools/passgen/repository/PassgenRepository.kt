@@ -22,4 +22,10 @@ interface PassgenRepository {
 
     /** Records [password] in password history unless it was the last one recorded. */
     fun recordCopied(password: String)
+
+    /** Records that the next Generator resume should open the Passgen type. */
+    fun requestPassgenTab()
+
+    /** Returns `true` exactly once per [requestPassgenTab] call, then clears the request. */
+    fun consumePassgenTabRequest(): Boolean
 }

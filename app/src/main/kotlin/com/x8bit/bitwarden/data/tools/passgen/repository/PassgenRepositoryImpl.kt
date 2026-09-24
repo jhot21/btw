@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.security.SecureRandom
 import java.time.Clock
+import java.util.concurrent.atomic.AtomicBoolean
 
 private const val RANDOM_PASSPHRASE_BYTES = 16
 
@@ -31,6 +32,7 @@ class PassgenRepositoryImpl(
     private val scope = CoroutineScope(SupervisorJob() + dispatcherManager.io)
     private val secureRandom = SecureRandom()
     private var lastRecordedPassword: String? = null
+    private val passgenTabRequested = AtomicBoolean(false)
 
     override fun getSettings(): PassgenSettings = diskSource.getSettings() ?: PassgenSettings()
 
@@ -55,6 +57,12 @@ class PassgenRepositoryImpl(
         val view = PasswordHistoryView(password = password, lastUsedDate = clock.instant())
         scope.launch { generatorRepository.storePasswordHistory(view) }
     }
+
+    override fun requestPassgenTab() {
+        passgenTabRequested.set(true)
+    }
+
+    override fun consumePassgenTabRequest(): Boolean = passgenTabRequested.getAndSet(false)
 
     private fun newRandomPassphrase(): String {
         val bytes = ByteArray(RANDOM_PASSPHRASE_BYTES).also(secureRandom::nextBytes)
