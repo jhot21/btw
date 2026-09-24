@@ -1994,6 +1994,10 @@ class GeneratorScreenTest : BitwardenComposeTest() {
             .onNodeWithTag("PassgenError")
             .performScrollTo()
             .assertExists()
+        composeTestRule
+            .onNodeWithText("Leave empty to use a random passphrase")
+            .performScrollTo()
+            .assertExists()
 
         composeTestRule
             .onNodeWithTag("PassgenVersionV2")

@@ -69,7 +69,7 @@ fun PassgenContent(
             label = stringResource(R.string.passgen_passphrase),
             value = state.passphrase,
             onValueChange = { onAction(PassgenAction.PassphraseChange(it)) },
-            supportingContent = null,
+            supportingText = stringResource(R.string.passgen_passphrase_hint),
             cardStyle = CardStyle.Top(),
             passwordFieldTestTag = "PassgenPassphraseField",
             modifier = Modifier.fillMaxWidth(),
