@@ -46,8 +46,8 @@ Resolving a sync PR (human or agent):
    Delete/modify and binary conflicts leave no `<<<<<<<` markers in the file — check the PR's
    "Conflicts" list and verify each such file by hand.
 3. `scripts/check-fork-hooks.sh`
-4. `./gradlew :app:testStandardDebugUnitTest --tests 'com.x8bit.bitwarden.data.tools.passgen.*' --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*' --tests 'com.x8bit.bitwarden.ui.platform.util.PassgenShortcutUtilsTest' --tests 'com.x8bit.bitwarden.MainViewModelTest' --tests 'com.x8bit.bitwarden.ui.platform.feature.rootnav.RootNavViewModelTest' --tests 'com.x8bit.bitwarden.ui.platform.feature.vaultunlockednavbar.VaultUnlockedNavBarViewModelTest'`
-5. `./gradlew :app:assembleStandardDebug`
+4. `./gradlew :app:testFdroidDebugUnitTest --tests 'com.x8bit.bitwarden.data.tools.passgen.*' --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*' --tests 'com.x8bit.bitwarden.ui.platform.util.PassgenShortcutUtilsTest' --tests 'com.x8bit.bitwarden.MainViewModelTest' --tests 'com.x8bit.bitwarden.ui.platform.feature.rootnav.RootNavViewModelTest' --tests 'com.x8bit.bitwarden.ui.platform.feature.vaultunlockednavbar.VaultUnlockedNavBarViewModelTest'`
+5. `./gradlew :app:assembleFdroidDebug`
 6. Push, mark ready for review, merge with a **merge commit**.
 
 ## Hooks
@@ -123,6 +123,8 @@ ignores the app's own screens.
 After an upstream sync, verify that every `android:targetPackage` in the three `shortcuts.xml` files
 (`main`, `beta`, `release`) still equals its variant's ID (`me.jhot.btw.dev`, `me.jhot.btw.beta`,
 `me.jhot.btw`); `scripts/check-fork-hooks.sh` verifies the marked lines are still present.
+
+The standard flavor's debug build needs google-services.json for the app's package; this fork's tracked file only knows com.x8bit.bitwarden.dev, so the standard flavor is not built here — the fork builds and tests the fdroid flavor.
 
 Because the ID differs from upstream, the official Bitwarden app can be installed alongside this one.
 

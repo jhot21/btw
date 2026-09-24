@@ -36,7 +36,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
-          ./gradlew :app:testStandardDebugUnitTest
+          ./gradlew :app:testFdroidDebugUnitTest
           --tests 'com.x8bit.bitwarden.data.tools.passgen.*'
           --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*'
           --tests 'com.x8bit.bitwarden.ui.platform.util.PassgenShortcutUtilsTest'

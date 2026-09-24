@@ -104,8 +104,8 @@ jobs:
             echo "## Resolution checklist"
             echo "1. Resolve conflicts, keeping upstream changes **and** every \`// PASSGEN:\` hook (see FORK.md)."
             echo "2. \`scripts/check-fork-hooks.sh\`"
-            echo "3. \`./gradlew :app:testStandardDebugUnitTest --tests 'com.x8bit.bitwarden.data.tools.passgen.*' --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*'\`"
-            echo "4. \`./gradlew :app:assembleStandardDebug\`"
+            echo "3. \`./gradlew :app:testFdroidDebugUnitTest --tests 'com.x8bit.bitwarden.data.tools.passgen.*' --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*'\`"
+            echo "4. \`./gradlew :app:assembleFdroidDebug\`"
             echo "5. Merge with a **merge commit** (never squash/rebase)."
             echo
             echo "<details><summary>Upstream commits</summary>"
