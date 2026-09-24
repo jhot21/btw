@@ -1,0 +1,115 @@
+name: Upstream sync
+
+# Opens a PR each week merging upstream/main into this fork so a human or agent can
+# resolve/review it. On conflicts, it commits the conflict markers and opens a draft PR
+# labelled `merge-conflicts`; `scripts/check-fork-hooks.sh` (run by fork-checks.yml) fails
+# on markers, so it can't be merged by accident. See FORK.md.
+#
+# Requires a fine-grained PAT in the `SYNC_TOKEN` secret with, on jhot21/btw:
+#   - Contents: write       (checkout with push rights, push the sync branch)
+#   - Pull requests: write  (open/list the sync PR)
+#   - Issues: write         (create the `merge-conflicts` label; labels live under the
+#                            Issues permission in fine-grained PAT scopes, not Pull requests)
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN }}
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/bitwarden/android.git
+          git fetch upstream main
+
+      - name: Decide whether to sync
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          count="$(git rev-list --count HEAD..upstream/main)"
+          open="$(gh pr list --state open --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("upstream-sync/"))] | length')"
+          echo "count=$count" >>"$GITHUB_OUTPUT"
+          if [[ "$count" == "0" || "$open" != "0" ]]; then
+            echo "skip=true" >>"$GITHUB_OUTPUT"
+            echo "Nothing to do (new upstream commits: $count, open sync PRs: $open)"
+          else
+            echo "skip=false" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge upstream
+        if: steps.check.outputs.skip == 'false'
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="upstream-sync/$(date -u +%Y-%m-%d)"
+          echo "branch=$branch" >>"$GITHUB_OUTPUT"
+          git checkout -b "$branch"
+          if git merge --no-ff --no-edit upstream/main; then
+            echo "conflicts=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "conflicts=true" >>"$GITHUB_OUTPUT"
+            git diff --name-only --diff-filter=U >/tmp/conflicts.txt
+            git add -A
+            git commit --no-edit -m "Merge upstream/main (UNRESOLVED CONFLICTS)"
+          fi
+          git push origin "$branch"
+
+      - name: Open PR
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
+          BRANCH: ${{ steps.merge.outputs.branch }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+          COUNT: ${{ steps.check.outputs.count }}
+        run: |
+          base="$(git merge-base origin/main upstream/main)"
+          touched="$(git diff --name-only "$base" upstream/main | while read -r f; do
+            grep -q "\`$f\`" FORK.md && echo "- \`$f\`"; done || true)"
+          {
+            echo "Merges **$COUNT** upstream commits from \`bitwarden/android@main\`."
+            echo
+            if [[ "$CONFLICTS" == "true" ]]; then
+              echo "## ⚠️ Conflicts (markers committed; CI will fail until resolved)"
+              sed 's/^/- `/; s/$/`/' /tmp/conflicts.txt
+              echo
+            fi
+            echo "## Fork-hook files changed upstream"
+            echo "${touched:-_None._}"
+            echo
+            echo "## Resolution checklist"
+            echo "1. Resolve conflicts, keeping upstream changes **and** every \`// PASSGEN:\` hook (see FORK.md)."
+            echo "2. \`scripts/check-fork-hooks.sh\`"
+            echo "3. \`./gradlew :app:testStandardDebugUnitTest --tests 'com.x8bit.bitwarden.data.tools.passgen.*' --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*'\`"
+            echo "4. \`./gradlew :app:assembleStandardDebug\`"
+            echo "5. Merge with a **merge commit** (never squash/rebase)."
+            echo
+            echo "<details><summary>Upstream commits</summary>"
+            echo
+            echo '```'
+            git log --oneline "HEAD^1..upstream/main" | head -200
+            echo '```'
+            echo "</details>"
+          } >/tmp/body.md
+          title="chore: sync upstream $(date -u +%Y-%m-%d)"
+          if [[ "$CONFLICTS" == "true" ]]; then
+            gh label create merge-conflicts --color B60205 --force >/dev/null
+            gh pr create --draft --base main --head "$BRANCH" --title "$title (conflicts)" \
+              --body-file /tmp/body.md --label merge-conflicts
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file /tmp/body.md
+          fi
