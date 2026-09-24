@@ -10,6 +10,7 @@ name: Upstream sync
 #   - Pull requests: write  (open/list the sync PR)
 #   - Issues: write         (create the `merge-conflicts` label; labels live under the
 #                            Issues permission in fine-grained PAT scopes, not Pull requests)
+#   - Workflows: write      (pushes that modify .github/workflows/* are rejected otherwise)
 
 on:
   schedule:
@@ -23,9 +24,15 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      # Without this, `gh` resolves to bitwarden/android (the `upstream` remote sorts
+      # before `origin`) when running non-interactively, so every gh call below would
+      # target the wrong repo.
+      GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.SYNC_TOKEN }}
 
