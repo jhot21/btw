@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber")
+
 package com.x8bit.bitwarden.data.tools.passgen.algorithm
 
 /**
