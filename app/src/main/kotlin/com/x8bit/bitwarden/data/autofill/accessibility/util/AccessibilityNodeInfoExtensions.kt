@@ -34,6 +34,7 @@ val AccessibilityNodeInfo.shouldSkipPackage: Boolean
     get() {
         val packageName = this.packageName.takeUnless { it.isNullOrBlank() } ?: return true
         if (packageName.startsWith(prefix = PACKAGE_NAME_BITWARDEN_PREFIX)) return true
+        if (packageName.startsWith(prefix = "me.jhot.btw")) return true // PASSGEN:
         if (packageName.contains(other = PACKAGE_NAME_LAUNCHER_PARTIAL, ignoreCase = true)) {
             return true
         }

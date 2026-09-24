@@ -10,7 +10,7 @@
             android:action="android.intent.action.VIEW"
             android:data="bitwarden://password_generator"
             android:targetClass="com.x8bit.bitwarden.MainActivity"
-            android:targetPackage="com.x8bit.bitwarden" />
+            android:targetPackage="me.jhot.btw" /> <!-- PASSGEN: package id (see FORK.md) -->
     </shortcut>
     <shortcut
         android:enabled="true"
@@ -22,7 +22,7 @@
             android:action="android.intent.action.VIEW"
             android:data="bitwarden://my_vault"
             android:targetClass="com.x8bit.bitwarden.MainActivity"
-            android:targetPackage="com.x8bit.bitwarden" />
+            android:targetPackage="me.jhot.btw" /> <!-- PASSGEN: package id (see FORK.md) -->
     </shortcut>
     <!-- PASSGEN: Passgen shortcut (see FORK.md) -->
     <shortcut
@@ -35,6 +35,6 @@
             android:action="android.intent.action.VIEW"
             android:data="bitwarden://passgen"
             android:targetClass="com.x8bit.bitwarden.MainActivity"
-            android:targetPackage="com.x8bit.bitwarden" />
+            android:targetPackage="me.jhot.btw" /> <!-- PASSGEN: package id (see FORK.md) -->
     </shortcut>
 </shortcuts>

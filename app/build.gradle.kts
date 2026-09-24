@@ -60,7 +60,7 @@ configure<ApplicationExtension> {
     }
 
     defaultConfig {
-        applicationId = "com.x8bit.bitwarden"
+        applicationId = "me.jhot.btw" // PASSGEN: fork application ID (see FORK.md)
         minSdk {
             version = release(libs.versions.minSdk.get().toInt())
         }

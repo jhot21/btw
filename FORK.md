@@ -89,6 +89,11 @@ Format: `` - `<file>` :: `<text on the marker line>` `` where the marker is `// 
 - `app/src/main/res/xml/shortcuts.xml` :: `PASSGEN: Passgen shortcut`
 - `app/src/beta/res/xml/shortcuts.xml` :: `PASSGEN: Passgen shortcut`
 - `app/src/release/res/xml/shortcuts.xml` :: `PASSGEN: Passgen shortcut`
+- `app/build.gradle.kts` :: `applicationId = "me.jhot.btw"`
+- `app/src/main/res/xml/shortcuts.xml` :: `android:targetPackage="me.jhot.btw.dev"`
+- `app/src/beta/res/xml/shortcuts.xml` :: `android:targetPackage="me.jhot.btw.beta"`
+- `app/src/release/res/xml/shortcuts.xml` :: `android:targetPackage="me.jhot.btw"`
+- `app/src/main/kotlin/com/x8bit/bitwarden/data/autofill/accessibility/util/AccessibilityNodeInfoExtensions.kt` :: `startsWith(prefix = "me.jhot.btw")`
 - `app/src/test/kotlin/com/x8bit/bitwarden/MainViewModelTest.kt` :: `PASSGEN: fork-only test`
 - `app/src/test/kotlin/com/x8bit/bitwarden/MainViewModelTest.kt` :: `mockDataString: String? = null, // PASSGEN:`
 - `app/src/test/kotlin/com/x8bit/bitwarden/MainViewModelTest.kt` :: `every { dataString } returns mockDataString // PASSGEN:`
@@ -106,3 +111,38 @@ handles the two passcode types, so `PassgenMainType` never reaches it via `loadO
 dispatch. The `PASSGEN(labelRes = ...)` enum entry's marker sits on its own comment
 line (`        // PASSGEN:`) above the wrapped `PASSGEN(` statement, so its anchor is that comment
 line's exact indentation rather than the `PASSGEN(` text itself.
+
+## App identity
+
+The applicationId is `me.jhot.btw` (set in `app/build.gradle.kts`); the debug and beta variants
+derive `me.jhot.btw.dev` and `me.jhot.btw.beta` from their `applicationIdSuffix`. The Kotlin
+`namespace`/package intentionally stays `com.x8bit.bitwarden` (no package rename, to keep upstream
+merges clean). The accessibility service's `shouldSkipPackage` also skips `me.jhot.btw*` so autofill
+ignores the app's own screens.
+
+After an upstream sync, verify that every `android:targetPackage` in the three `shortcuts.xml` files
+(`main`, `beta`, `release`) still equals its variant's ID (`me.jhot.btw.dev`, `me.jhot.btw.beta`,
+`me.jhot.btw`); `scripts/check-fork-hooks.sh` verifies the marked lines are still present.
+
+Because the ID differs from upstream, the official Bitwarden app can be installed alongside this one.
+
+## Building a signed APK
+
+```bash
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+  ./gradlew :app:assembleFdroidRelease
+```
+
+Use the F-Droid flavor: it needs no `google-services.json`. The standard flavor's release build does,
+and this fork doesn't ship one. Output: `app/build/outputs/apk/fdroid/release/`. Gradle does not sign
+release builds here, so the APK is unsigned (`*-unsigned.apk`). Sign it with the build-tools from
+`$ANDROID_HOME` (or `~/Library/Android/sdk`), e.g. `BT=~/Library/Android/sdk/build-tools/<version>`:
+
+```bash
+"$BT/zipalign" -p -f 4 app-fdroid-release-unsigned.apk aligned.apk
+"$BT/apksigner" sign --ks <keystore> --out btw-release.apk aligned.apk
+"$BT/apksigner" verify --verbose btw-release.apk
+```
+
+The keystore must NOT be committed to the repo. Back it up somewhere safe: if it is lost, installed
+copies cannot be updated in place (a new key means uninstalling first, losing local data).
