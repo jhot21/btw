@@ -85,6 +85,22 @@ class GeneratorPassgenStateTest {
     }
 
     @Test
+    fun `toPassgenOptions drops custom specials when specials are off`() {
+        val options = PassgenMainType(
+            useSpecials = false,
+            customSpecials = "-_",
+        ).toPassgenOptions(forceNewRandom = false)
+        assertTrue(options.noSpecials)
+        assertEquals("", options.customSpecials)
+
+        val enabled = PassgenMainType(
+            useSpecials = true,
+            customSpecials = "-_",
+        ).toPassgenOptions(forceNewRandom = false)
+        assertEquals("-_", enabled.customSpecials)
+    }
+
+    @Test
     fun `parceler never writes passphrase or passphraseUsed`() {
         val parcel = mockk<Parcel>(relaxed = true)
         with(PassgenMainType) {

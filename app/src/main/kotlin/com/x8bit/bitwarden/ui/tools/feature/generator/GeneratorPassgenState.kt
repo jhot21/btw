@@ -114,7 +114,7 @@ fun PassgenMainType.toPassgenOptions(forceNewRandom: Boolean): PassgenOptions = 
     noUppers = !useUppers,
     noNumbers = !useNumbers,
     noSpecials = !useSpecials,
-    customSpecials = customSpecials,
+    customSpecials = if (useSpecials) customSpecials else "",
     noAmbiguous = avoidAmbiguous,
     customAmbiguous = if (avoidAmbiguous) customAmbiguous else "",
 )
