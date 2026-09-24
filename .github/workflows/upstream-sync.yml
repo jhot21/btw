@@ -57,6 +57,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           branch="upstream-sync/$(date -u +%Y-%m-%d)"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            branch="${branch}-$(date -u +%H%M)"
+          fi
           echo "branch=$branch" >>"$GITHUB_OUTPUT"
           git checkout -b "$branch"
           if git merge --no-ff --no-edit upstream/main; then

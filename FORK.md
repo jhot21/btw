@@ -22,6 +22,13 @@ This is a maintained fork of [bitwarden/android](https://github.com/bitwarden/an
 `upstream-sync/YYYY-MM-DD`. On conflicts, it commits the conflict markers and opens a **draft** PR
 labelled `merge-conflicts`. `fork-checks.yml` fails on markers, so it can't be merged by accident.
 
+The workflow authenticates as a fine-grained PAT in the `SYNC_TOKEN` secret, which needs these
+scopes on `jhot21/btw`:
+- **Contents: write** — checkout with push rights, push the sync branch.
+- **Pull requests: write** — open/list the sync PR.
+- **Issues: write** — create the `merge-conflicts` label (repository labels are governed by the
+  Issues permission for fine-grained PATs, not Pull requests).
+
 Resolving a sync PR (human or agent):
 1. `git fetch origin && git checkout upstream-sync/<date>`
 2. Resolve every conflict; keep upstream's change **and** re-apply each `// PASSGEN:` hook.
