@@ -35,4 +35,24 @@ make_fixture
 echo '# no hooks here' >"$tmp/repo/FORK.md"
 if "$here/check-fork-hooks.sh" "$tmp/repo" >/dev/null; then echo "FAIL: zero parsed hooks accepted"; exit 1; fi
 
+make_fixture
+rm "$tmp/repo/FORK.md"
+cat >"$tmp/repo/FORK.md" <<'EOF'
+## Hooks
+- `src/s.xml` :: `PASSGEN: Passgen shortcut`
+EOF
+echo '<!-- PASSGEN: Passgen shortcut (see FORK.md) -->' >"$tmp/repo/src/s.xml"
+git -C "$tmp/repo" add -A
+"$here/check-fork-hooks.sh" "$tmp/repo" >/dev/null || { echo "FAIL: XML marker with <!-- PASSGEN: rejected"; exit 1; }
+
+make_fixture
+rm "$tmp/repo/FORK.md"
+cat >"$tmp/repo/FORK.md" <<'EOF'
+## Hooks
+- `src/s.xml` :: `Passgen shortcut`
+EOF
+echo '<!-- Passgen shortcut -->' >"$tmp/repo/src/s.xml"
+git -C "$tmp/repo" add -A
+if "$here/check-fork-hooks.sh" "$tmp/repo" >/dev/null; then echo "FAIL: XML marker without PASSGEN marker accepted"; exit 1; fi
+
 echo "PASS"

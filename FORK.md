@@ -8,7 +8,7 @@ This is a maintained fork of [bitwarden/android](https://github.com/bitwarden/an
 
 - New code lives in new files (`data/tools/passgen/`, `ui/tools/feature/generator/*Passgen*`,
   `ui/tools/feature/generator/passgen/`, `res/values/strings_passgen.xml`).
-- Every edit to an upstream file carries `// PASSGEN:` and is listed under **Hooks** below.
+- Every edit to an upstream file carries a marker and is listed under **Hooks** below: `// PASSGEN:` in Kotlin, or a standalone `<!-- PASSGEN: ... -->` comment line in XML.
 - Upstream-sync PRs **must be merged with a merge commit** (never squash or rebase), otherwise every
   later sync re-conflicts on the same hunks.
 - Upstream's own workflows are disabled in this repo's Actions settings (they need Bitwarden secrets).
@@ -46,7 +46,7 @@ Resolving a sync PR (human or agent):
 
 ## Hooks
 
-Format: `` - `<file>` :: `<text that must appear on a line with // PASSGEN:>` ``
+Format: `` - `<file>` :: `<text on the marker line>` `` where the marker is `// PASSGEN:` in Kotlin or a standalone `<!-- PASSGEN: ... -->` comment line in XML.
 
 - `app/src/main/kotlin/com/x8bit/bitwarden/ui/tools/feature/generator/GeneratorScreen.kt` :: `import com.x8bit.bitwarden.ui.tools.feature.generator.passgen.PassgenContent`
 - `app/src/main/kotlin/com/x8bit/bitwarden/ui/tools/feature/generator/GeneratorScreen.kt` :: `onPassgenAction = { viewModel.trySendAction(it) }`

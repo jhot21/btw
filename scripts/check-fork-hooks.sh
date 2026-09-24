@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verifies the fork's upstream hooks survived a merge. See FORK.md.
-# Fails if any hook listed in FORK.md is missing its `// PASSGEN:` line, or if any
-# tracked file still contains merge conflict markers.
+# Fails if any hook listed in FORK.md is missing its `// PASSGEN:` marker (Kotlin) or
+# `<!-- PASSGEN:` marker (XML), or if any tracked file contains merge conflict markers.
 set -euo pipefail
 root="${1:-$(git rev-parse --show-toplevel)}"
 cd "$root"
@@ -20,7 +20,7 @@ while IFS= read -r line; do
   if [[ ! -f "$path" ]]; then
     echo "MISSING FILE: $path"; status=1; continue
   fi
-  if ! grep -F -- "$anchor" "$path" | grep -qF '// PASSGEN:'; then
+  if ! grep -F -- "$anchor" "$path" | grep -qE '(// |<!-- )PASSGEN:'; then
     echo "MISSING HOOK: $path :: $anchor"; status=1
   fi
 done < <(grep -E '^- `[^`]+` :: `.+`$' FORK.md || true)
