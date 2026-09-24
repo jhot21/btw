@@ -980,6 +980,20 @@ class MainViewModelTest : BaseViewModelTest() {
         )
     }
 
+    // PASSGEN: fork-only test
+    @Suppress("MaxLineLength")
+    @Test
+    fun `on ReceiveNewIntent with a passgen deeplink data should set the special circumstance to PassgenShortcut`() {
+        val viewModel = createViewModel()
+        val mockIntent = createMockIntent(mockDataString = "bitwarden://passgen")
+
+        viewModel.trySendAction(MainAction.ReceiveNewIntent(intent = mockIntent))
+        assertEquals(
+            com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut,
+            specialCircumstanceManager.specialCircumstance,
+        )
+    }
+
     @Test
     fun `changes in the allowed screen capture value should update the state`() {
         val viewModel = createViewModel()
@@ -1431,6 +1445,7 @@ private fun createMockIntent(
     mockIsAddTotpLoginItemFromAuthenticator: Boolean = false,
     mockProviderImportCredentialsRequest: ProviderImportCredentialsRequest? = null,
     mockDataUri: Uri? = null,
+    mockDataString: String? = null, // PASSGEN:
 ): Intent = mockk<Intent> {
     every { getTotpDataOrNull() } returns mockTotpData
     every { getPasswordlessRequestDataIntentOrNull() } returns mockPasswordlessRequestData
@@ -1444,6 +1459,7 @@ private fun createMockIntent(
     every { isAddTotpLoginItemFromAuthenticator() } returns mockIsAddTotpLoginItemFromAuthenticator
     every { getProviderImportCredentialsRequest() } returns mockProviderImportCredentialsRequest
     every { data } returns mockDataUri
+    every { dataString } returns mockDataString // PASSGEN:
 }
 
 private val FIXED_CLOCK: Clock = Clock.fixed(

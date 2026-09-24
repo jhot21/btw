@@ -209,6 +209,7 @@ class RootNavViewModel @Inject constructor(
 
                     SpecialCircumstance.AccountSecurityShortcut,
                     SpecialCircumstance.GeneratorShortcut,
+                    com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut, // PASSGEN:
                     is SpecialCircumstance.PremiumCheckout,
                     SpecialCircumstance.StripePortal,
                     SpecialCircumstance.VaultShortcut,
@@ -286,6 +287,7 @@ class RootNavViewModel @Inject constructor(
         when (specialCircumstance) {
             is SpecialCircumstance.AccountSecurityShortcut,
             is SpecialCircumstance.GeneratorShortcut,
+            is com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut, // PASSGEN:
             is SpecialCircumstance.PremiumCheckout,
             is SpecialCircumstance.StripePortal,
             is SpecialCircumstance.SearchShortcut,

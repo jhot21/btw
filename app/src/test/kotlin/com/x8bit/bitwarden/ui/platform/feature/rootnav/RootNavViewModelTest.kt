@@ -986,6 +986,20 @@ class RootNavViewModelTest : BaseViewModelTest() {
         )
     }
 
+    // PASSGEN: fork-only test
+    @Suppress("MaxLineLength")
+    @Test
+    fun `when the active user has an unlocked vault but there is a PassgenShortcut special circumstance the nav state should be VaultUnlocked`() {
+        specialCircumstanceManager.specialCircumstance =
+            com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut
+        mutableUserStateFlow.tryEmit(MOCK_VAULT_UNLOCKED_USER_STATE)
+        val viewModel = createViewModel()
+        assertEquals(
+            RootNavState.VaultUnlocked(activeUserId = "activeUserId"),
+            viewModel.stateFlow.value,
+        )
+    }
+
     @Suppress("MaxLineLength")
     @Test
     fun `when the active user has an unlocked vault but there is an SearchShortcut special circumstance the nav state should be VaultUnlocked`() {

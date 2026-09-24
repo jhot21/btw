@@ -28,6 +28,8 @@ class VaultUnlockedNavBarViewModel @Inject constructor(
     specialCircumstancesManager: SpecialCircumstanceManager,
     firstTimeActionManager: FirstTimeActionManager,
     policyManager: PolicyManager,
+    passgenRepository: // PASSGEN:
+        com.x8bit.bitwarden.data.tools.passgen.repository.PassgenRepository,
 ) : BaseViewModel<VaultUnlockedNavBarState, VaultUnlockedNavBarEvent, VaultUnlockedNavBarAction>(
     initialState = VaultUnlockedNavBarState(
         vaultNavBarLabelRes = BitwardenString.my_vault,
@@ -60,6 +62,12 @@ class VaultUnlockedNavBarViewModel @Inject constructor(
 
         when (specialCircumstancesManager.specialCircumstance) {
             SpecialCircumstance.GeneratorShortcut -> {
+                sendEvent(VaultUnlockedNavBarEvent.Shortcut.NavigateToGeneratorScreen)
+                specialCircumstancesManager.specialCircumstance = null
+            }
+
+            com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut -> { // PASSGEN:
+                passgenRepository.requestPassgenTab()
                 sendEvent(VaultUnlockedNavBarEvent.Shortcut.NavigateToGeneratorScreen)
                 specialCircumstancesManager.specialCircumstance = null
             }

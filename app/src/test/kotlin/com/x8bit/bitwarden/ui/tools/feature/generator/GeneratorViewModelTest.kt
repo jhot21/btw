@@ -2562,6 +2562,44 @@ class GeneratorViewModelTest : BaseViewModelTest() {
             )
             assertFalse(GeneratorState.MainTypeOption.PASSGEN in state.typeOptions)
         }
+
+        // PASSGEN: fork-only launch-request tests
+        @Test
+        fun `LifecycleResume with a pending passgen request in default mode selects Passgen`() {
+            every { passgenRepository.consumePassgenTabRequest() } returns true
+            val viewModel = createViewModel()
+            viewModel.trySendAction(GeneratorAction.LifecycleResume)
+            assertTrue(viewModel.stateFlow.value.selectedType is PassgenMainType)
+            verify(exactly = 1) { passgenRepository.consumePassgenTabRequest() }
+        }
+
+        @Test
+        fun `LifecycleResume without a pending passgen request leaves the selection unchanged`() {
+            every { passgenRepository.consumePassgenTabRequest() } returns false
+            val viewModel = createViewModel()
+            viewModel.trySendAction(GeneratorAction.LifecycleResume)
+            assertTrue(viewModel.stateFlow.value.selectedType is GeneratorState.MainType.Password)
+        }
+
+        @Test
+        fun `LifecycleResume in modal mode never consumes the passgen request`() {
+            every { passgenRepository.consumePassgenTabRequest() } returns true
+            val viewModel = createViewModel(
+                state = null,
+                type = GeneratorMode.Modal.Password,
+            )
+            viewModel.trySendAction(GeneratorAction.LifecycleResume)
+            verify(exactly = 0) { passgenRepository.consumePassgenTabRequest() }
+            assertTrue(viewModel.stateFlow.value.selectedType is GeneratorState.MainType.Password)
+        }
+
+        @Test
+        fun `LifecycleResume with a pending passgen request while on Passgen stays on Passgen`() {
+            every { passgenRepository.consumePassgenTabRequest() } returns true
+            val viewModel = selectPassgen()
+            viewModel.trySendAction(GeneratorAction.LifecycleResume)
+            assertTrue(viewModel.stateFlow.value.selectedType is PassgenMainType)
+        }
     }
 
     //region Helper Functions

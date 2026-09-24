@@ -425,6 +425,11 @@ class MainViewModel @Inject constructor(
                     )
             }
 
+            com.x8bit.bitwarden.ui.platform.util.isPassgenShortcut(intent) -> { // PASSGEN:
+                specialCircumstanceManager.specialCircumstance =
+                    com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut
+            }
+
             hasGeneratorShortcut -> {
                 specialCircumstanceManager.specialCircumstance =
                     SpecialCircumstance.GeneratorShortcut

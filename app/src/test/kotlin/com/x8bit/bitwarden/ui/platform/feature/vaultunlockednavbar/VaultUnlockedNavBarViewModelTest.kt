@@ -30,6 +30,10 @@ class VaultUnlockedNavBarViewModelTest : BaseViewModelTest() {
         every { specialCircumstance } returns null
     }
 
+    private val passgenRepository: // PASSGEN:
+        com.x8bit.bitwarden.data.tools.passgen.repository.PassgenRepository =
+        mockk(relaxed = true)
+
     private val mutableSettingsBadgeCountFlow = MutableStateFlow(0)
     private val firstTimeActionManager: FirstTimeActionManager = mockk {
         every { allSettingsBadgeCountFlow } returns mutableSettingsBadgeCountFlow
@@ -58,6 +62,29 @@ class VaultUnlockedNavBarViewModelTest : BaseViewModelTest() {
             }
             verify(exactly = 1) {
                 specialCircumstancesManager.specialCircumstance
+                specialCircumstancesManager.specialCircumstance = null
+            }
+        }
+
+    // PASSGEN: fork-only test
+    @Suppress("MaxLineLength")
+    @Test
+    fun `on init with PassgenShortcut special circumstance should request the passgen tab and navigate to the generator screen`() =
+        runTest {
+            every {
+                specialCircumstancesManager.specialCircumstance
+            } returns com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut
+
+            val viewModel = createViewModel()
+
+            viewModel.eventFlow.test {
+                assertEquals(
+                    VaultUnlockedNavBarEvent.Shortcut.NavigateToGeneratorScreen,
+                    awaitItem(),
+                )
+            }
+            verify(exactly = 1) {
+                passgenRepository.requestPassgenTab()
                 specialCircumstancesManager.specialCircumstance = null
             }
         }
@@ -343,6 +370,7 @@ class VaultUnlockedNavBarViewModelTest : BaseViewModelTest() {
             specialCircumstancesManager = specialCircumstancesManager,
             firstTimeActionManager = firstTimeActionManager,
             policyManager = policyManager,
+            passgenRepository = passgenRepository, // PASSGEN:
         )
 }
 

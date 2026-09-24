@@ -19,6 +19,8 @@ This is a maintained fork of [bitwarden/android](https://github.com/bitwarden/an
   as a repo secret (e.g. `PACKAGES_TOKEN`) and reference it in that job's `GITHUB_TOKEN` env instead.
 - The passgen salt is stored only on the device. Back it up (Generator → Passgen → copy salt):
   clearing app data without a backup makes passwords unrecoverable.
+- On API < 30 MainActivity is singleTask and relies on onNewIntent; the navbar's init-time shortcut
+  check doesn't re-fire for an already-open app — same limitation as the built-in generator shortcut.
 
 ## Syncing with upstream
 
@@ -74,6 +76,23 @@ Format: `` - `<file>` :: `<text on the marker line>` `` where the marker is `// 
 - `app/src/test/kotlin/com/x8bit/bitwarden/ui/tools/feature/generator/GeneratorViewModelTest.kt` :: `private val passgenRepository: PassgenRepository = mockk(relaxed = true) {`
 - `app/src/test/kotlin/com/x8bit/bitwarden/ui/tools/feature/generator/GeneratorViewModelTest.kt` :: `fork-only tests`
 - `app/src/test/kotlin/com/x8bit/bitwarden/ui/tools/feature/generator/GeneratorViewModelTest.kt` :: `passgenRepository = passgenRepository,`
+- `app/src/main/kotlin/com/x8bit/bitwarden/MainViewModel.kt` :: `isPassgenShortcut(intent) -> { // PASSGEN:`
+- `app/src/main/kotlin/com/x8bit/bitwarden/ui/platform/feature/rootnav/RootNavViewModel.kt` :: `                    com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut, // PASSGEN:`
+- `app/src/main/kotlin/com/x8bit/bitwarden/ui/platform/feature/rootnav/RootNavViewModel.kt` :: `is com.x8bit.bitwarden.data.platform.manager.model.PassgenShortcut, // PASSGEN:`
+- `app/src/main/kotlin/com/x8bit/bitwarden/ui/platform/feature/vaultunlockednavbar/VaultUnlockedNavBarViewModel.kt` :: `passgenRepository: // PASSGEN:`
+- `app/src/main/kotlin/com/x8bit/bitwarden/ui/platform/feature/vaultunlockednavbar/VaultUnlockedNavBarViewModel.kt` :: `model.PassgenShortcut -> { // PASSGEN:`
+- `app/src/main/kotlin/com/x8bit/bitwarden/ui/tools/feature/generator/GeneratorViewModel.kt` :: `handlePassgenLaunchRequest()) return // PASSGEN:`
+- `app/src/main/res/xml/shortcuts.xml` :: `PASSGEN: Passgen shortcut`
+- `app/src/beta/res/xml/shortcuts.xml` :: `PASSGEN: Passgen shortcut`
+- `app/src/release/res/xml/shortcuts.xml` :: `PASSGEN: Passgen shortcut`
+- `app/src/test/kotlin/com/x8bit/bitwarden/MainViewModelTest.kt` :: `PASSGEN: fork-only test`
+- `app/src/test/kotlin/com/x8bit/bitwarden/MainViewModelTest.kt` :: `mockDataString: String? = null, // PASSGEN:`
+- `app/src/test/kotlin/com/x8bit/bitwarden/MainViewModelTest.kt` :: `every { dataString } returns mockDataString // PASSGEN:`
+- `app/src/test/kotlin/com/x8bit/bitwarden/ui/platform/feature/rootnav/RootNavViewModelTest.kt` :: `PASSGEN: fork-only test`
+- `app/src/test/kotlin/com/x8bit/bitwarden/ui/platform/feature/vaultunlockednavbar/VaultUnlockedNavBarViewModelTest.kt` :: `passgenRepository: // PASSGEN:`
+- `app/src/test/kotlin/com/x8bit/bitwarden/ui/platform/feature/vaultunlockednavbar/VaultUnlockedNavBarViewModelTest.kt` :: `PASSGEN: fork-only test`
+- `app/src/test/kotlin/com/x8bit/bitwarden/ui/platform/feature/vaultunlockednavbar/VaultUnlockedNavBarViewModelTest.kt` :: `passgenRepository = passgenRepository, // PASSGEN:`
+- `app/src/test/kotlin/com/x8bit/bitwarden/ui/tools/feature/generator/GeneratorViewModelTest.kt` :: `PASSGEN: fork-only launch-request tests`
 
 Note: `GeneratorViewModel.kt`'s `loadOptions` hook (line 387 as of this writing) reads
 `is PassgenMainType -> updateGeneratorMainType { it }` — it re-derives the main type on

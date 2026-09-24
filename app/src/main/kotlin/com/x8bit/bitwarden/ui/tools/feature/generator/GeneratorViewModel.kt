@@ -196,6 +196,7 @@ class GeneratorViewModel @Inject constructor(
     }
 
     private fun handleOnResumed() {
+        if (handlePassgenLaunchRequest()) return // PASSGEN:
         // when the screen resumes we need to refresh the options for the current option from
         // disk in the event they were changed while the screen was in the foreground.
         loadOptions(shouldUseStorageOptions = true)
@@ -1947,6 +1948,13 @@ class GeneratorViewModel @Inject constructor(
 
             else -> updateGeneratorMainType { current.reduce(action) }
         }
+    }
+
+    private fun handlePassgenLaunchRequest(): Boolean {
+        if (state.generatorMode !is GeneratorMode.Default) return false
+        if (!passgenRepository.consumePassgenTabRequest()) return false
+        if (state.selectedType !is PassgenMainType) loadPassgenOptions()
+        return true
     }
 
     private fun loadPassgenOptions() {

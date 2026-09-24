@@ -24,4 +24,17 @@
             android:targetClass="com.x8bit.bitwarden.MainActivity"
             android:targetPackage="com.x8bit.bitwarden.dev" />
     </shortcut>
+    <!-- PASSGEN: Passgen shortcut (see FORK.md) -->
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_generator_shortcut"
+        android:shortcutId="bitwarden_passgen"
+        android:shortcutLongLabel="@string/passgen"
+        android:shortcutShortLabel="@string/passgen">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="bitwarden://passgen"
+            android:targetClass="com.x8bit.bitwarden.MainActivity"
+            android:targetPackage="com.x8bit.bitwarden.dev" />
+    </shortcut>
 </shortcuts>
