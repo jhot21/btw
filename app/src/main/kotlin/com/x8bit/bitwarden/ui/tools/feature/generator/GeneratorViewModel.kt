@@ -26,6 +26,8 @@ import com.x8bit.bitwarden.data.platform.manager.model.CoachMarkTourType
 import com.x8bit.bitwarden.data.platform.manager.util.getActivePolicies
 import com.x8bit.bitwarden.data.platform.manager.util.getActivePoliciesFlow
 import com.x8bit.bitwarden.data.tools.generator.repository.GeneratorRepository
+// PASSGEN: fork-only import
+import com.x8bit.bitwarden.data.tools.passgen.repository.PassgenRepository
 import com.x8bit.bitwarden.data.tools.generator.repository.model.GeneratedCatchAllUsernameResult
 import com.x8bit.bitwarden.data.tools.generator.repository.model.GeneratedForwardedServiceUsernameResult
 import com.x8bit.bitwarden.data.tools.generator.repository.model.GeneratedPassphraseResult
@@ -84,6 +86,7 @@ class GeneratorViewModel @Inject constructor(
     private val reviewPromptManager: ReviewPromptManager,
     private val firstTimeActionManager: FirstTimeActionManager,
     private val premiumStateManager: PremiumStateManager,
+    private val passgenRepository: PassgenRepository, // PASSGEN:
 ) : BaseViewModel<GeneratorState, GeneratorEvent, GeneratorAction>(
     initialState = savedStateHandle[KEY_STATE] ?: run {
         val generatorMode = savedStateHandle.toGeneratorArgs().type
@@ -261,7 +264,7 @@ class GeneratorViewModel @Inject constructor(
                 handleSimpleLoginSelfHostServerUrlChange(action)
             }
 
-            is PassgenAction -> Unit // PASSGEN: wired in next task
+            is PassgenAction -> handlePassgenAction(action) // PASSGEN:
         }
     }
 
@@ -730,6 +733,9 @@ class GeneratorViewModel @Inject constructor(
     private fun handleCopyClick() {
         reviewPromptManager.registerGeneratedResultAction()
         clipboardManager.setText(text = state.generatedText)
+        if (state.selectedType is PassgenMainType) { // PASSGEN:
+            passgenRepository.recordCopied(state.generatedText) // PASSGEN:
+        } // PASSGEN:
     }
 
     private fun handleTooltipClick() {
@@ -894,7 +900,7 @@ class GeneratorViewModel @Inject constructor(
                 )
             }
 
-            GeneratorState.MainTypeOption.PASSGEN -> Unit // PASSGEN: wired in next task
+            GeneratorState.MainTypeOption.PASSGEN -> loadPassgenOptions() // PASSGEN:
         }
     }
 
@@ -1595,7 +1601,8 @@ class GeneratorViewModel @Inject constructor(
                     }
                 }
 
-                is PassgenMainType -> Unit // PASSGEN: wired in next task
+                is PassgenMainType -> // PASSGEN:
+                    generatePassgen(updatedMainType, forceRegeneration)
             }
         }
     }
@@ -1919,6 +1926,53 @@ class GeneratorViewModel @Inject constructor(
     }
 
     //endregion Utility Functions
+
+    // PASSGEN: region — fork-only passgen handling, see FORK.md
+    private fun handlePassgenAction(action: PassgenAction) {
+        val current = state.selectedType as? PassgenMainType ?: return
+        when (action) {
+            PassgenAction.CopyPassphraseUsedClick -> {
+                current.passphraseUsed.takeIf { it.isNotEmpty() }
+                    ?.let { clipboardManager.setText(text = it) }
+            }
+
+            PassgenAction.CopySaltClick -> {
+                current.salt.takeIf { it.isNotEmpty() }
+                    ?.let { clipboardManager.setText(text = it, isSensitive = false) }
+            }
+
+            else -> updateGeneratorMainType { current.reduce(action) }
+        }
+    }
+
+    private fun loadPassgenOptions() {
+        updateGeneratorMainType { passgenRepository.getSettings().toPassgenMainType() }
+    }
+
+    private suspend fun generatePassgen(type: PassgenMainType, forceNewRandom: Boolean) {
+        passgenRepository.saveSettings(type.toSettings())
+        passgenRepository
+            .generate(type.toPassgenOptions(forceNewRandom = forceNewRandom))
+            .onSuccess { result ->
+                mutableStateFlow.update {
+                    val selected = it.selectedType as? PassgenMainType ?: return@update it
+                    it.copy(
+                        generatedText = result.password,
+                        selectedType = selected.copy(
+                            passphraseUsed = result.passphraseUsed,
+                            errorMessage = null,
+                        ),
+                    )
+                }
+            }
+            .onFailure { error ->
+                mutableStateFlow.update {
+                    val selected = it.selectedType as? PassgenMainType ?: return@update it
+                    it.copy(selectedType = selected.copy(errorMessage = error.message))
+                }
+            }
+    }
+    // PASSGEN: endregion
 }
 
 /**
@@ -1948,9 +2002,9 @@ data class GeneratorState(
     val typeOptions: List<MainTypeOption>
         get() = when (generatorMode) {
             GeneratorMode.Default -> MainTypeOption.entries.toList()
-            GeneratorMode.Modal.Password -> MainTypeOption
+            GeneratorMode.Modal.Password -> MainTypeOption // PASSGEN:
                 .entries
-                .filter { it != MainTypeOption.USERNAME }
+                .filter { it != MainTypeOption.USERNAME && it != MainTypeOption.PASSGEN }
 
             is GeneratorMode.Modal.Username -> emptyList()
         }

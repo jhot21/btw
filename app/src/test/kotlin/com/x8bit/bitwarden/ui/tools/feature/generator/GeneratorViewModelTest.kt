@@ -31,10 +31,17 @@ import com.x8bit.bitwarden.data.tools.generator.repository.model.GeneratorResult
 import com.x8bit.bitwarden.data.tools.generator.repository.model.PasscodeGenerationOptions
 import com.x8bit.bitwarden.data.tools.generator.repository.model.UsernameGenerationOptions
 import com.x8bit.bitwarden.data.tools.generator.repository.util.FakeGeneratorRepository
+// PASSGEN: fork-only imports
+import com.x8bit.bitwarden.data.tools.passgen.algorithm.PassgenAlgorithm
+import com.x8bit.bitwarden.data.tools.passgen.model.GeneratedPassgenResult
+import com.x8bit.bitwarden.data.tools.passgen.model.PassgenOptions
+import com.x8bit.bitwarden.data.tools.passgen.model.PassgenSettings
+import com.x8bit.bitwarden.data.tools.passgen.repository.PassgenRepository
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockPolicyView
 import com.x8bit.bitwarden.ui.tools.feature.generator.GeneratorState.MainType.Username.UsernameType.ForwardedEmailAlias.ServiceType
 import com.x8bit.bitwarden.ui.tools.feature.generator.GeneratorState.MainType.Username.UsernameType.ForwardedEmailAlias.ServiceTypeOption
 import com.x8bit.bitwarden.ui.tools.feature.generator.model.GeneratorMode
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -127,6 +134,10 @@ class GeneratorViewModelTest : BaseViewModelTest() {
         every {
             isUpgradedToPremiumCardEligibleFlow
         } returns mutableUpgradedToPremiumCardEligibleFlow
+    }
+
+    private val passgenRepository: PassgenRepository = mockk(relaxed = true) { // PASSGEN:
+        every { getSettings() } returns PassgenSettings(salt = "salt")
     }
 
     @BeforeEach
@@ -2434,6 +2445,109 @@ class GeneratorViewModelTest : BaseViewModelTest() {
                 )
             }
         }
+
+    // PASSGEN: fork-only tests
+    @Nested
+    inner class Passgen {
+        @BeforeEach
+        fun setup() {
+            coEvery { passgenRepository.generate(any()) } answers {
+                val options = firstArg<PassgenOptions>()
+                val passphrase = options.passphrase.ifEmpty { "random-${System.nanoTime()}" }
+                Result.success(
+                    GeneratedPassgenResult(
+                        password = PassgenAlgorithm.generate(options.copy(passphrase = passphrase)),
+                        passphraseUsed = passphrase,
+                    ),
+                )
+            }
+        }
+
+        private fun selectPassgen(): GeneratorViewModel = createViewModel().also {
+            it.trySendAction(
+                GeneratorAction.MainTypeOptionSelect(GeneratorState.MainTypeOption.PASSGEN),
+            )
+        }
+
+        @Test
+        fun `selecting PASSGEN loads saved settings and generates`() {
+            val viewModel = selectPassgen()
+            val selected = viewModel.stateFlow.value.selectedType as PassgenMainType
+            assertEquals("salt", selected.salt)
+            assertTrue(selected.passphraseUsed.isNotEmpty())
+            assertEquals(40, viewModel.stateFlow.value.generatedText.length)
+        }
+
+        @Test
+        fun `typing passphrase regenerates deterministically and does not record history`() {
+            val viewModel = selectPassgen()
+            "hunter2".forEachIndexed { i, _ ->
+                viewModel.trySendAction(PassgenAction.PassphraseChange("hunter2".take(i + 1)))
+            }
+            val expected = PassgenAlgorithm.generate(
+                PassgenOptions(passphrase = "hunter2", salt = "salt", length = 40),
+            )
+            assertEquals(expected, viewModel.stateFlow.value.generatedText)
+            verify(exactly = 0) { passgenRepository.recordCopied(any()) }
+        }
+
+        @Test
+        fun `option change saves settings`() {
+            val viewModel = selectPassgen()
+            viewModel.trySendAction(PassgenAction.VersionChange(2))
+            verify { passgenRepository.saveSettings(PassgenSettings(version = 2, salt = "salt")) }
+        }
+
+        @Test
+        fun `regenerate with empty passphrase draws new random passphrase`() {
+            val viewModel = selectPassgen()
+            val before = (viewModel.stateFlow.value.selectedType as PassgenMainType).passphraseUsed
+            viewModel.trySendAction(PassgenAction.ToggleNumbers(false))
+            val afterToggle =
+                (viewModel.stateFlow.value.selectedType as PassgenMainType).passphraseUsed
+            assertEquals(before, afterToggle)
+
+            viewModel.trySendAction(GeneratorAction.RegenerateClick)
+            val afterRegenerate =
+                (viewModel.stateFlow.value.selectedType as PassgenMainType).passphraseUsed
+            assertTrue(afterRegenerate != before)
+        }
+
+        @Test
+        fun `copy records history`() {
+            every { clipboardManager.setText(text = any<String>()) } just runs
+            val viewModel = selectPassgen()
+            viewModel.trySendAction(GeneratorAction.CopyClick)
+            verify { passgenRepository.recordCopied(viewModel.stateFlow.value.generatedText) }
+        }
+
+        @Test
+        fun `failure sets errorMessage and keeps previous text`() {
+            val viewModel = selectPassgen()
+            val previous = viewModel.stateFlow.value.generatedText
+            coEvery { passgenRepository.generate(any()) } returns
+                Result.failure(IllegalArgumentException("boom"))
+            viewModel.trySendAction(PassgenAction.LengthChange(20, isUserInteracting = false))
+            assertEquals(previous, viewModel.stateFlow.value.generatedText)
+            assertEquals(
+                "boom",
+                (viewModel.stateFlow.value.selectedType as PassgenMainType).errorMessage,
+            )
+        }
+
+        @Test
+        fun `PASSGEN is not offered in the modal password generator`() {
+            val state = GeneratorState(
+                generatedText = "",
+                selectedType = GeneratorState.MainType.Password(),
+                generatorMode = GeneratorMode.Modal.Password,
+                currentEmailAddress = "a@b.c",
+                shouldShowCoachMarkTour = false,
+            )
+            assertFalse(GeneratorState.MainTypeOption.PASSGEN in state.typeOptions)
+        }
+    }
+
     //region Helper Functions
 
     @Suppress("LongParameterList")
@@ -2668,6 +2782,7 @@ class GeneratorViewModelTest : BaseViewModelTest() {
         reviewPromptManager = reviewPromptManager,
         firstTimeActionManager = firstTimeActionManager,
         premiumStateManager = premiumStateManager,
+        passgenRepository = passgenRepository, // PASSGEN:
     )
 
     private fun createViewModel(
