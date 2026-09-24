@@ -27,4 +27,12 @@ printf '<<<<<<< HEAD\na\n=======\nb\n>>>>>>> upstream/main\n' >>"$tmp/repo/src/A
 git -C "$tmp/repo" add -A
 if "$here/check-fork-hooks.sh" "$tmp/repo" >/dev/null; then echo "FAIL: conflict markers accepted"; exit 1; fi
 
+make_fixture
+rm "$tmp/repo/FORK.md"
+if "$here/check-fork-hooks.sh" "$tmp/repo" >/dev/null; then echo "FAIL: missing FORK.md accepted"; exit 1; fi
+
+make_fixture
+echo '# no hooks here' >"$tmp/repo/FORK.md"
+if "$here/check-fork-hooks.sh" "$tmp/repo" >/dev/null; then echo "FAIL: zero parsed hooks accepted"; exit 1; fi
+
 echo "PASS"
