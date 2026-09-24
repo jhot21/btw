@@ -105,6 +105,7 @@ import com.x8bit.bitwarden.ui.tools.feature.generator.handlers.rememberRandomWor
 import com.x8bit.bitwarden.ui.tools.feature.generator.handlers.rememberUsernameTypeHandlers
 import com.x8bit.bitwarden.ui.tools.feature.generator.model.ExploreGeneratorCoachMark
 import com.x8bit.bitwarden.ui.tools.feature.generator.model.GeneratorMode
+import com.x8bit.bitwarden.ui.tools.feature.generator.passgen.PassgenContent // PASSGEN:
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -279,6 +280,7 @@ fun GeneratorScreen(
                 onUpgradedToPremiumCardDismiss = {
                     viewModel.trySendAction(GeneratorAction.UpgradedToPremiumCardDismiss)
                 },
+                onPassgenAction = { viewModel.trySendAction(it) }, // PASSGEN:
                 lazyListState = lazyListState,
             )
         }
@@ -366,6 +368,7 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
     onCoachMarkComplete: () -> Unit,
     onUpgradedToPremiumCardClick: () -> Unit,
     onUpgradedToPremiumCardDismiss: () -> Unit,
+    onPassgenAction: (PassgenAction) -> Unit, // PASSGEN:
     modifier: Modifier = Modifier,
 ) {
     val windowAdaptiveInfo = currentWindowAdaptiveInfoV2()
@@ -595,7 +598,14 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
                 }
             }
 
-            is PassgenMainType -> Unit // PASSGEN: wired in next task
+            is PassgenMainType -> item { // PASSGEN:
+                PassgenContent(
+                    state = selectedType,
+                    onAction = onPassgenAction,
+                    modifier = Modifier
+                        .standardHorizontalMargin(windowAdaptiveInfo = windowAdaptiveInfo),
+                )
+            }
         }
 
         item {

@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onSiblings
 import androidx.compose.ui.test.performClick
@@ -1973,6 +1974,41 @@ class GeneratorScreenTest : BitwardenComposeTest() {
     }
 
     //endregion Upgraded To Premium Action Card Tests
+
+    //region Passgen Tests
+
+    // PASSGEN: fork-only tests
+    @Test
+    fun `passgen content renders and sends actions`() {
+        updateState(
+            DEFAULT_STATE.copy(
+                selectedType = PassgenMainType(passphraseUsed = "abc", errorMessage = "bad"),
+            ),
+        )
+
+        composeTestRule
+            .onNodeWithTag("PassgenPassphraseUsedField")
+            .performScrollTo()
+            .assertExists()
+        composeTestRule
+            .onNodeWithTag("PassgenError")
+            .performScrollTo()
+            .assertExists()
+
+        composeTestRule
+            .onNodeWithTag("PassgenVersionV2")
+            .performScrollTo()
+            .performClick()
+        verify { viewModel.trySendAction(PassgenAction.VersionChange(2)) }
+
+        composeTestRule
+            .onNodeWithTag("PassgenSaltField")
+            .performScrollTo()
+            .performTextInput("s")
+        verify { viewModel.trySendAction(PassgenAction.SaltChange("s")) }
+    }
+
+    //endregion Passgen Tests
 
     private fun updateState(state: GeneratorState) {
         mutableStateFlow.value = state
