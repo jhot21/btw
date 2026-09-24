@@ -2571,6 +2571,8 @@ class GeneratorViewModelTest : BaseViewModelTest() {
             viewModel.trySendAction(GeneratorAction.LifecycleResume)
             assertTrue(viewModel.stateFlow.value.selectedType is PassgenMainType)
             verify(exactly = 1) { passgenRepository.consumePassgenTabRequest() }
+            // The early return skips loadOptions(), so settings load exactly once.
+            verify(exactly = 1) { passgenRepository.getSettings() }
         }
 
         @Test
@@ -2599,6 +2601,9 @@ class GeneratorViewModelTest : BaseViewModelTest() {
             val viewModel = selectPassgen()
             viewModel.trySendAction(GeneratorAction.LifecycleResume)
             assertTrue(viewModel.stateFlow.value.selectedType is PassgenMainType)
+            verify(exactly = 1) { passgenRepository.consumePassgenTabRequest() }
+            verify(exactly = 1) { passgenRepository.getSettings() }
+            io.mockk.coVerify(exactly = 1) { passgenRepository.generate(any()) }
         }
     }
 

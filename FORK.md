@@ -7,7 +7,10 @@ This is a maintained fork of [bitwarden/android](https://github.com/bitwarden/an
 ## Rules
 
 - New code lives in new files (`data/tools/passgen/`, `ui/tools/feature/generator/*Passgen*`,
-  `ui/tools/feature/generator/passgen/`, `res/values/strings_passgen.xml`).
+  `ui/tools/feature/generator/passgen/`, `res/values/strings_passgen.xml`,
+  `ui/platform/util/PassgenShortcutUtils.kt` and its test, and
+  `data/platform/manager/model/PassgenShortcut.kt`). The latter must live in `SpecialCircumstance`'s
+  package because sealed subclasses must share the package; conflict resolvers must not move it.
 - Every edit to an upstream file carries a marker and is listed under **Hooks** below: `// PASSGEN:` in Kotlin, or a standalone `<!-- PASSGEN: ... -->` comment line in XML.
 - Upstream-sync PRs **must be merged with a merge commit** (never squash or rebase), otherwise every
   later sync re-conflicts on the same hunks.
@@ -21,6 +24,7 @@ This is a maintained fork of [bitwarden/android](https://github.com/bitwarden/an
   clearing app data without a backup makes passwords unrecoverable.
 - On API < 30 MainActivity is singleTask and relies on onNewIntent; the navbar's init-time shortcut
   check doesn't re-fire for an already-open app — same limitation as the built-in generator shortcut.
+- The Passgen launch request is an in-memory one-shot flag on PassgenRepository; if the vault locks or the account switches between the navbar consuming the shortcut and the Generator's first resume, the flag survives until the next Default-mode Generator resume, which then opens on Passgen. Harmless (only the tab choice), accepted.
 
 ## Syncing with upstream
 
@@ -42,7 +46,7 @@ Resolving a sync PR (human or agent):
    Delete/modify and binary conflicts leave no `<<<<<<<` markers in the file — check the PR's
    "Conflicts" list and verify each such file by hand.
 3. `scripts/check-fork-hooks.sh`
-4. `./gradlew :app:testStandardDebugUnitTest --tests 'com.x8bit.bitwarden.data.tools.passgen.*' --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*'`
+4. `./gradlew :app:testStandardDebugUnitTest --tests 'com.x8bit.bitwarden.data.tools.passgen.*' --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*' --tests 'com.x8bit.bitwarden.ui.platform.util.PassgenShortcutUtilsTest' --tests 'com.x8bit.bitwarden.MainViewModelTest' --tests 'com.x8bit.bitwarden.ui.platform.feature.rootnav.RootNavViewModelTest' --tests 'com.x8bit.bitwarden.ui.platform.feature.vaultunlockednavbar.VaultUnlockedNavBarViewModelTest'`
 5. `./gradlew :app:assembleStandardDebug`
 6. Push, mark ready for review, merge with a **merge commit**.
 

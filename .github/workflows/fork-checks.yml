@@ -39,3 +39,7 @@ jobs:
           ./gradlew :app:testStandardDebugUnitTest
           --tests 'com.x8bit.bitwarden.data.tools.passgen.*'
           --tests 'com.x8bit.bitwarden.ui.tools.feature.generator.*'
+          --tests 'com.x8bit.bitwarden.ui.platform.util.PassgenShortcutUtilsTest'
+          --tests 'com.x8bit.bitwarden.MainViewModelTest'
+          --tests 'com.x8bit.bitwarden.ui.platform.feature.rootnav.RootNavViewModelTest'
+          --tests 'com.x8bit.bitwarden.ui.platform.feature.vaultunlockednavbar.VaultUnlockedNavBarViewModelTest'
