@@ -1,5 +1,7 @@
 package com.x8bit.bitwarden.data.vault.repository
 
+import android.os.Build
+import android.security.KeyStoreException
 import app.cash.turbine.test
 import com.bitwarden.collections.CollectionView
 import com.bitwarden.core.InitUserCryptoMethod
@@ -11,6 +13,7 @@ import com.bitwarden.core.data.repository.error.MissingPropertyException
 import com.bitwarden.core.data.repository.model.DataState
 import com.bitwarden.core.data.util.asFailure
 import com.bitwarden.core.data.util.asSuccess
+import com.bitwarden.core.util.isBuildVersionAtLeast
 import com.bitwarden.exporters.ExportFormat
 import com.bitwarden.fido.Fido2CredentialAutofillView
 import com.bitwarden.network.model.CipherTypeJson
@@ -37,6 +40,7 @@ import com.x8bit.bitwarden.data.auth.repository.model.createMockWrappedAccountCr
 import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
 import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
+import com.x8bit.bitwarden.data.platform.manager.keyrotation.KeyRotationManager
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockAccount
@@ -70,8 +74,11 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkConstructor
+import io.mockk.mockkStatic
 import io.mockk.runs
 import io.mockk.unmockkConstructor
+import io.mockk.unmockkStatic
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -81,9 +88,11 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.security.GeneralSecurityException
+import java.security.InvalidKeyException
 import java.time.Instant
 import javax.crypto.BadPaddingException
 import javax.crypto.Cipher
+import javax.crypto.IllegalBlockSizeException
 
 @Suppress("LargeClass")
 class VaultRepositoryTest {
@@ -123,6 +132,11 @@ class VaultRepositoryTest {
     private val featureFlagManager: FeatureFlagManager = mockk {
         every { getFeatureFlag(FlagKey.SdkPinUnlock) } returns true
     }
+    private val keyRotationManager: KeyRotationManager = mockk {
+        coEvery {
+            rotateBiometricsKey(userId = any(), decryptedBiometricsUserKey = any())
+        } just runs
+    }
 
     private val vaultRepository: VaultRepository = VaultRepositoryImpl(
         vaultDiskSource = vaultDiskSource,
@@ -137,6 +151,7 @@ class VaultRepositoryTest {
         vaultSyncManager = vaultSyncManager,
         credentialExchangeImportManager = credentialExchangeImportManager,
         pinProtectedUserKeyManager = pinProtectedUserKeyManager,
+        keyRotationManager = keyRotationManager,
         featureFlagManager = featureFlagManager,
     )
 
@@ -150,12 +165,15 @@ class VaultRepositoryTest {
         every {
             anyConstructed<MissingPropertyException>() == any<MissingPropertyException>()
         } returns true
+        mockkStatic(::isBuildVersionAtLeast)
+        mockBuildVersion(sdkInt = Build.VERSION_CODES.TIRAMISU)
     }
 
     @AfterEach
     fun tearDown() {
         unmockkConstructor(NoActiveUserException::class)
         unmockkConstructor(MissingPropertyException::class)
+        unmockkStatic(::isBuildVersionAtLeast)
     }
 
     @Test
@@ -255,12 +273,163 @@ class VaultRepositoryTest {
 
     @Suppress("MaxLineLength")
     @Test
+    fun `unlockVaultWithBiometrics with stored IV and Keystore user-authentication-required error on API 33 should return BiometricKeystoreAuthorizationError without unlocking or mutating biometrics`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.TIRAMISU)
+            val (error, _) = createUserAuthenticationRequiredDoFinalError()
+
+            val result = unlockVaultWithBiometricsDoFinalError(error = error)
+
+            assertEquals(
+                VaultUnlockResult.BiometricKeystoreAuthorizationError(error = error),
+                result,
+            )
+            assertEquals(
+                error,
+                (result as VaultUnlockResult.BiometricKeystoreAuthorizationError).error,
+            )
+            assertStoredBiometricsUnchanged()
+            verifyUnlockAndPinDerivationNeverCalled()
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVaultWithBiometrics with stored IV and Keystore user-authentication-required error on API 36 should return BiometricKeystoreAuthorizationError without unlocking or mutating biometrics`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.BAKLAVA)
+            val (error, _) = createUserAuthenticationRequiredDoFinalError()
+
+            val result = unlockVaultWithBiometricsDoFinalError(error = error)
+
+            assertEquals(
+                VaultUnlockResult.BiometricKeystoreAuthorizationError(error = error),
+                result,
+            )
+            assertStoredBiometricsUnchanged()
+            verifyUnlockAndPinDerivationNeverCalled()
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVaultWithBiometrics with stored IV and nested Keystore user-authentication-required error should return BiometricKeystoreAuthorizationError`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.TIRAMISU)
+            val (error, _) = createUserAuthenticationRequiredDoFinalError(additionalWrapperCount = 2)
+
+            val result = unlockVaultWithBiometricsDoFinalError(error = error)
+
+            assertEquals(
+                VaultUnlockResult.BiometricKeystoreAuthorizationError(error = error),
+                result,
+            )
+            assertStoredBiometricsUnchanged()
+            verifyUnlockAndPinDerivationNeverCalled()
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVaultWithBiometrics without IV and Keystore user-authentication-required error should return BiometricKeystoreAuthorizationError without migrating biometrics`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.TIRAMISU)
+            val (error, _) = createUserAuthenticationRequiredDoFinalError()
+
+            val result = unlockVaultWithBiometricsDoFinalError(
+                error = error,
+                initVector = null,
+            )
+
+            assertEquals(
+                VaultUnlockResult.BiometricKeystoreAuthorizationError(error = error),
+                result,
+            )
+            assertStoredBiometricsUnchanged(initVector = null)
+            verifyUnlockAndPinDerivationNeverCalled()
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVaultWithBiometrics with stored IV and Keystore error with a nonmatching numeric code should return BiometricDecodingError`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.TIRAMISU)
+            val keyStoreException = mockKeyStoreException(
+                numericErrorCode = KeyStoreException.ERROR_KEY_CORRUPTED,
+            )
+            val error = wrapKeyStoreException(keyStoreException = keyStoreException)
+
+            val result = unlockVaultWithBiometricsDoFinalError(error = error)
+
+            assertEquals(VaultUnlockResult.BiometricDecodingError(error = error), result)
+            assertStoredBiometricsUnchanged()
+            verifyUnlockAndPinDerivationNeverCalled()
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVaultWithBiometrics with stored IV and missing exception cause should return BiometricDecodingError`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.TIRAMISU)
+            val error = IllegalBlockSizeException()
+
+            val result = unlockVaultWithBiometricsDoFinalError(error = error)
+
+            assertEquals(VaultUnlockResult.BiometricDecodingError(error = error), result)
+            assertStoredBiometricsUnchanged()
+            verifyUnlockAndPinDerivationNeverCalled()
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVaultWithBiometrics with stored IV and permanently invalidated key should return BiometricDecodingError`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.TIRAMISU)
+            val error = InvalidKeyException("Key permanently invalidated")
+
+            val result = unlockVaultWithBiometricsDoFinalError(error = error)
+
+            assertEquals(VaultUnlockResult.BiometricDecodingError(error = error), result)
+            assertStoredBiometricsUnchanged()
+            verifyUnlockAndPinDerivationNeverCalled()
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVaultWithBiometrics with stored IV and Keystore user-authentication-required error on API 29 should return BiometricDecodingError without querying the numeric code`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.Q)
+            val (error, keyStoreException) = createUserAuthenticationRequiredDoFinalError()
+
+            val result = unlockVaultWithBiometricsDoFinalError(error = error)
+
+            assertEquals(VaultUnlockResult.BiometricDecodingError(error = error), result)
+            assertStoredBiometricsUnchanged()
+            verifyUnlockAndPinDerivationNeverCalled()
+            verify(exactly = 0) { keyStoreException.numericErrorCode }
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
+    fun `unlockVaultWithBiometrics with stored IV and Keystore user-authentication-required error on API 32 should return BiometricDecodingError without querying the numeric code`() =
+        runTest {
+            mockBuildVersion(sdkInt = Build.VERSION_CODES.S_V2)
+            val (error, keyStoreException) = createUserAuthenticationRequiredDoFinalError()
+
+            val result = unlockVaultWithBiometricsDoFinalError(error = error)
+
+            assertEquals(VaultUnlockResult.BiometricDecodingError(error = error), result)
+            assertStoredBiometricsUnchanged()
+            verifyUnlockAndPinDerivationNeverCalled()
+            verify(exactly = 0) { keyStoreException.numericErrorCode }
+        }
+
+    @Suppress("MaxLineLength")
+    @Test
     fun `unlockVaultWithBiometrics with an IV and VaultLockManager Success should store the updated key and IV and unlock for the current user and return Success`() =
         runTest {
             val userId = MOCK_USER_STATE.activeUserId
             val biometricsKey = "asdf1234"
             fakeAuthDiskSource.userState = MOCK_USER_STATE
             val encryptedBytes = byteArrayOf(1, 1)
+            val decryptedUserKey = encryptedBytes.toString(Charsets.ISO_8859_1)
             val initVector = byteArrayOf(2, 2)
             val cipher = mockk<Cipher> {
                 every { doFinal(any()) } returns encryptedBytes
@@ -272,7 +441,7 @@ class VaultRepositoryTest {
                     email = "email",
                     kdf = MOCK_PROFILE.toSdkParams(),
                     initUserCryptoMethod = InitUserCryptoMethod.DecryptedKey(
-                        decryptedUserKey = encryptedBytes.toString(Charsets.ISO_8859_1),
+                        decryptedUserKey = decryptedUserKey,
                     ),
                     organizationKeys = null,
                 )
@@ -296,9 +465,13 @@ class VaultRepositoryTest {
                     email = "email",
                     kdf = MOCK_PROFILE.toSdkParams(),
                     initUserCryptoMethod = InitUserCryptoMethod.DecryptedKey(
-                        decryptedUserKey = encryptedBytes.toString(Charsets.ISO_8859_1),
+                        decryptedUserKey = decryptedUserKey,
                     ),
                     organizationKeys = null,
+                )
+                keyRotationManager.rotateBiometricsKey(
+                    userId = userId,
+                    decryptedBiometricsUserKey = decryptedUserKey,
                 )
             }
         }
@@ -353,6 +526,10 @@ class VaultRepositoryTest {
                 )
                 pinProtectedUserKeyManager.deriveTemporaryPinProtectedUserKeyIfNecessary(
                     userId = userId,
+                )
+                keyRotationManager.rotateBiometricsKey(
+                    userId = userId,
+                    decryptedBiometricsUserKey = biometricsKey,
                 )
             }
             fakeAuthDiskSource.apply {
@@ -1830,8 +2007,86 @@ class VaultRepositoryTest {
             )
         } returns unlockResult
     }
+
+    private fun mockBuildVersion(sdkInt: Int) {
+        every { isBuildVersionAtLeast(any()) } answers { sdkInt >= firstArg<Int>() }
+    }
+
+    private fun mockKeyStoreException(numericErrorCode: Int): KeyStoreException {
+        val keyStoreException = mockk<KeyStoreException>()
+        every { keyStoreException.numericErrorCode } returns numericErrorCode
+        every { keyStoreException.cause } returns null
+        return keyStoreException
+    }
+
+    private fun wrapKeyStoreException(
+        keyStoreException: KeyStoreException,
+        additionalWrapperCount: Int = 0,
+    ): IllegalBlockSizeException {
+        var cause: Throwable = keyStoreException
+        repeat(additionalWrapperCount) { index ->
+            cause = RuntimeException("wrapper-$index", cause)
+        }
+        return IllegalBlockSizeException().apply { initCause(cause) }
+    }
+
+    private fun createUserAuthenticationRequiredDoFinalError(
+        additionalWrapperCount: Int = 0,
+    ): Pair<IllegalBlockSizeException, KeyStoreException> {
+        val keyStoreException = mockKeyStoreException(
+            numericErrorCode = KeyStoreException.ERROR_USER_AUTHENTICATION_REQUIRED,
+        )
+        return wrapKeyStoreException(
+            keyStoreException = keyStoreException,
+            additionalWrapperCount = additionalWrapperCount,
+        ) to keyStoreException
+    }
+
+    private suspend fun unlockVaultWithBiometricsDoFinalError(
+        error: Throwable,
+        initVector: ByteArray? = BIOMETRIC_INIT_VECTOR,
+        biometricsKey: String = BIOMETRIC_UNLOCK_KEY,
+    ): VaultUnlockResult {
+        val userId = MOCK_USER_STATE.activeUserId
+        fakeAuthDiskSource.userState = MOCK_USER_STATE
+        val cipher = mockk<Cipher> {
+            every { doFinal(any()) } throws error
+        }
+        fakeAuthDiskSource.apply {
+            storeUserBiometricInitVector(userId = userId, iv = initVector)
+            storeUserBiometricUnlockKey(userId = userId, biometricsKey = biometricsKey)
+            storeAccountCryptographicState(
+                userId = userId,
+                accountCryptographicState = MOCK_ACCOUNT_CRYPTOGRAPHIC_STATE,
+            )
+        }
+        return vaultRepository.unlockVaultWithBiometrics(cipher = cipher)
+    }
+
+    private fun assertStoredBiometricsUnchanged(
+        initVector: ByteArray? = BIOMETRIC_INIT_VECTOR,
+        biometricsKey: String = BIOMETRIC_UNLOCK_KEY,
+    ) {
+        val userId = MOCK_USER_STATE.activeUserId
+        fakeAuthDiskSource.assertBiometricsKey(userId = userId, biometricsKey = biometricsKey)
+        fakeAuthDiskSource.assertBiometricInitVector(userId = userId, iv = initVector)
+    }
+
+    private fun verifyUnlockAndPinDerivationNeverCalled() {
+        coVerify(exactly = 0) {
+            vaultLockManager.unlockVault(any(), any(), any(), any(), any(), any())
+        }
+        coVerify(exactly = 0) {
+            pinProtectedUserKeyManager.deriveTemporaryPinProtectedUserKeyIfNecessary(
+                userId = any(),
+            )
+        }
+    }
     //endregion Helper functions
 }
+
+private const val BIOMETRIC_UNLOCK_KEY = "asdf1234"
+private val BIOMETRIC_INIT_VECTOR = byteArrayOf(2, 2)
 
 private val MOCK_BASE_PROFILE = AccountJson.Profile(
     userId = "mockId-1",

@@ -24,6 +24,7 @@ import com.x8bit.bitwarden.data.auth.repository.util.toSdkParams
 import com.x8bit.bitwarden.data.autofill.util.login
 import com.x8bit.bitwarden.data.platform.error.NoActiveUserException
 import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
+import com.x8bit.bitwarden.data.platform.manager.keyrotation.KeyRotationManager
 import com.x8bit.bitwarden.data.platform.util.isActive
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
 import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
@@ -48,6 +49,7 @@ import com.x8bit.bitwarden.data.vault.repository.util.toEncryptedSdkCipher
 import com.x8bit.bitwarden.data.vault.repository.util.toEncryptedSdkFolder
 import com.x8bit.bitwarden.data.vault.repository.util.toSdkAccount
 import com.x8bit.bitwarden.data.vault.repository.util.toSdkMasterPasswordUnlock
+import com.x8bit.bitwarden.data.vault.repository.util.toVaultUnlockResult
 import com.x8bit.bitwarden.ui.vault.feature.vault.model.VaultFilterType
 import com.x8bit.bitwarden.ui.vault.feature.vault.util.toFilteredList
 import kotlinx.coroutines.CoroutineScope
@@ -84,11 +86,13 @@ internal class VaultRepositoryImpl(
     private val vaultSyncManager: VaultSyncManager,
     private val credentialExchangeImportManager: CredentialExchangeImportManager,
     private val pinProtectedUserKeyManager: PinProtectedUserKeyManager,
+    private val keyRotationManager: KeyRotationManager,
     private val featureFlagManager: FeatureFlagManager,
     dispatcherManager: DispatcherManager,
 ) : VaultRepository,
     CipherManager by cipherManager,
     FolderManager by folderManager,
+    KeyRotationManager by keyRotationManager,
     SendManager by sendManager,
     VaultLockManager by vaultLockManager,
     VaultSyncManager by vaultSyncManager {
@@ -299,7 +303,7 @@ internal class VaultRepositoryImpl(
                         .decodeToString()
                 } catch (e: GeneralSecurityException) {
                     Timber.w(e, "unlockVaultWithBiometrics failed when decrypting biometrics key")
-                    return VaultUnlockResult.BiometricDecodingError(error = e)
+                    return e.toVaultUnlockResult()
                 }
             }
             ?: biometricsKey
@@ -313,7 +317,7 @@ internal class VaultRepositoryImpl(
                     .toString(Charsets.ISO_8859_1)
             } catch (e: GeneralSecurityException) {
                 Timber.w(e, "unlockVaultWithBiometrics failed to migrate the user to IV encryption")
-                return VaultUnlockResult.BiometricDecodingError(error = e)
+                return e.toVaultUnlockResult()
             }
         } else {
             null
@@ -337,6 +341,10 @@ internal class VaultRepositoryImpl(
                 }
                 pinProtectedUserKeyManager.deriveTemporaryPinProtectedUserKeyIfNecessary(
                     userId = userId,
+                )
+                keyRotationManager.rotateBiometricsKey(
+                    userId = userId,
+                    decryptedBiometricsUserKey = decryptedUserKey,
                 )
             }
     }

@@ -3,6 +3,7 @@ package com.x8bit.bitwarden.data.platform.manager.di
 import android.app.Application
 import android.content.Context
 import androidx.core.content.getSystemService
+import com.bitwarden.core.data.manager.BuildInfoManager
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManager
 import com.bitwarden.core.data.manager.dispatcher.DispatcherManagerImpl
 import com.bitwarden.core.data.manager.realtime.RealtimeManager
@@ -71,6 +72,8 @@ import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManager
 import com.x8bit.bitwarden.data.platform.manager.event.OrganizationEventManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.garbage.GarbageCollectionManager
 import com.x8bit.bitwarden.data.platform.manager.garbage.GarbageCollectionManagerImpl
+import com.x8bit.bitwarden.data.platform.manager.keyrotation.KeyRotationManager
+import com.x8bit.bitwarden.data.platform.manager.keyrotation.KeyRotationManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.log.SettingsLogManager
 import com.x8bit.bitwarden.data.platform.manager.log.SettingsLogManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.network.NetworkConfigManager
@@ -91,6 +94,8 @@ import com.x8bit.bitwarden.data.platform.manager.sdk.SdkPlatformApiFactory
 import com.x8bit.bitwarden.data.platform.manager.sdk.SdkPlatformApiFactoryImpl
 import com.x8bit.bitwarden.data.platform.manager.sdk.SdkRepositoryFactory
 import com.x8bit.bitwarden.data.platform.manager.sdk.SdkRepositoryFactoryImpl
+import com.x8bit.bitwarden.data.platform.manager.sdk.log.SdkLoggerFactory
+import com.x8bit.bitwarden.data.platform.manager.sdk.log.SdkLoggerFactoryImpl
 import com.x8bit.bitwarden.data.platform.processor.AuthenticatorBridgeProcessor
 import com.x8bit.bitwarden.data.platform.processor.AuthenticatorBridgeProcessorImpl
 import com.x8bit.bitwarden.data.platform.repository.AuthenticatorBridgeRepository
@@ -98,6 +103,7 @@ import com.x8bit.bitwarden.data.platform.repository.DebugMenuRepository
 import com.x8bit.bitwarden.data.platform.repository.EnvironmentRepository
 import com.x8bit.bitwarden.data.platform.repository.SettingsRepository
 import com.x8bit.bitwarden.data.vault.datasource.disk.VaultDiskSource
+import com.x8bit.bitwarden.data.vault.datasource.sdk.VaultSdkSource
 import com.x8bit.bitwarden.data.vault.manager.VaultLockManager
 import com.x8bit.bitwarden.data.vault.repository.VaultRepository
 import com.x8bit.bitwarden.ui.platform.manager.resource.ResourceManager
@@ -238,12 +244,14 @@ object PlatformManagerModule {
         nativeLibraryManager: NativeLibraryManager,
         sdkRepositoryFactory: SdkRepositoryFactory,
         sdkPlatformApiFactory: SdkPlatformApiFactory,
+        sdkLoggerFactory: SdkLoggerFactory,
     ): SdkClientManager = SdkClientManagerImpl(
         dispatcherManager = dispatcherManager,
         featureFlagManager = featureFlagManager,
         nativeLibraryManager = nativeLibraryManager,
         sdkRepoFactory = sdkRepositoryFactory,
         sdkPlatformApiFactory = sdkPlatformApiFactory,
+        sdkLoggerFactory = sdkLoggerFactory,
     )
 
     @Provides
@@ -435,6 +443,14 @@ object PlatformManagerModule {
 
     @Provides
     @Singleton
+    fun provideSdkLoggerFactory(
+        buildInfoManager: BuildInfoManager,
+    ): SdkLoggerFactory = SdkLoggerFactoryImpl(
+        buildInfoManager = buildInfoManager,
+    )
+
+    @Provides
+    @Singleton
     fun provideKeyManager(
         @ApplicationContext context: Context,
         environmentRepository: EnvironmentRepository,
@@ -522,5 +538,15 @@ object PlatformManagerModule {
         autofillEnabledManager = autofillEnabledManager,
         accessibilityEnabledManager = accessibilityEnabledManager,
         browserThirdPartyAutofillEnabledManager = browserThirdPartyAutofillEnabledManager,
+    )
+
+    @Provides
+    @Singleton
+    fun provideKeyRotationManager(
+        authDiskSource: AuthDiskSource,
+        vaultSdkSource: VaultSdkSource,
+    ): KeyRotationManager = KeyRotationManagerImpl(
+        authDiskSource = authDiskSource,
+        vaultSdkSource = vaultSdkSource,
     )
 }
