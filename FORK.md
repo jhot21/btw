@@ -155,3 +155,29 @@ Add `--ks-key-alias <alias>` only if the keystore holds several keys.
 Keep the keystore outside the repository (e.g. `~/.android-signing/`) and never commit it. Back it
 up somewhere safe: if it is lost, installed copies cannot be updated in place (a new key means
 uninstalling first, losing local data).
+
+## Releasing
+
+Releases are published only as GitHub releases on this fork. The upstream tags were removed from
+the fork and are not mirrored: the sync workflow fetches `main` only, so none come back.
+
+- Tag format: `btw-v<versionName>-fork.<N>`, e.g. `btw-v2026.9.0-fork.1`. `versionName` is the
+  app's version (from upstream); `N` counts fork builds of that version, starting at 1. The `btw-`
+  prefix keeps the names from ever colliding with an upstream tag.
+- Always release from a commit on `main`, built and signed as described above.
+
+```bash
+VERSION=2026.9.0 N=1
+TAG="btw-v$VERSION-fork.$N"
+REL="$(mktemp -d)"  # outside the repo, so the APK can never be committed
+cp btw-release.apk "$REL/me.jhot.btw-fdroid-$VERSION.apk"
+(cd "$REL" && shasum -a 256 "me.jhot.btw-fdroid-$VERSION.apk" > SHA256SUMS)
+gh release create "$TAG" -R jhot21/btw --target "$(git rev-parse HEAD)" \
+  --title "btw $VERSION (fork build $N)" --notes-file "$REL/notes.md" \
+  "$REL/me.jhot.btw-fdroid-$VERSION.apk" "$REL/SHA256SUMS"
+```
+
+`$REL/notes.md` should give the package ID, the upstream sync date it is based on, the APK's
+SHA-256, and the signing certificate's SHA-256 (`apksigner verify --print-certs btw-release.apk`).
+Note that sideloaded installs need "Allow restricted settings" in the app's info page before the
+accessibility service can be enabled. Never commit the APK or the keystore.
