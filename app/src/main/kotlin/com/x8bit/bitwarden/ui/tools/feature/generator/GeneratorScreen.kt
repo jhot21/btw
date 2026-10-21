@@ -105,7 +105,13 @@ import com.x8bit.bitwarden.ui.tools.feature.generator.handlers.rememberRandomWor
 import com.x8bit.bitwarden.ui.tools.feature.generator.handlers.rememberUsernameTypeHandlers
 import com.x8bit.bitwarden.ui.tools.feature.generator.model.ExploreGeneratorCoachMark
 import com.x8bit.bitwarden.ui.tools.feature.generator.model.GeneratorMode
+<<<<<<< HEAD
 import com.x8bit.bitwarden.ui.tools.feature.generator.passgen.PassgenContent // PASSGEN:
+=======
+import com.x8bit.bitwarden.ui.vault.feature.addedit.VaultAddEditArgs
+import com.x8bit.bitwarden.ui.vault.model.VaultAddEditType
+import com.x8bit.bitwarden.ui.vault.model.VaultItemCipherType
+>>>>>>> upstream/main
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -121,6 +127,7 @@ import kotlin.math.max
 fun GeneratorScreen(
     viewModel: GeneratorViewModel = hiltViewModel(),
     onNavigateToPasswordHistory: () -> Unit,
+    navigateToVaultAddItem: (args: VaultAddEditArgs) -> Unit,
     onNavigateBack: () -> Unit,
     onDimNavBarRequest: (Boolean) -> Unit,
     intentManager: IntentManager = LocalIntentManager.current,
@@ -155,6 +162,17 @@ fun GeneratorScreen(
     val scope = rememberCoroutineScope()
     EventsEffect(viewModel = viewModel) { event ->
         when (event) {
+            is GeneratorEvent.NavigateToAddLogin -> {
+                navigateToVaultAddItem(
+                    VaultAddEditArgs(
+                        vaultAddEditType = VaultAddEditType.AddItem(
+                            initialData = event.initialData,
+                        ),
+                        vaultItemCipherType = VaultItemCipherType.LOGIN,
+                    ),
+                )
+            }
+
             GeneratorEvent.NavigateToPasswordHistory -> onNavigateToPasswordHistory()
 
             is GeneratorEvent.ShowSnackbar -> {
@@ -258,6 +276,7 @@ fun GeneratorScreen(
                 onRegenerateClick = { viewModel.trySendAction(GeneratorAction.RegenerateClick) },
                 onCopyClick = { viewModel.trySendAction(GeneratorAction.CopyClick) },
                 onSaveClick = { viewModel.trySendAction(GeneratorAction.SaveClick) },
+                onCreateLoginClick = { viewModel.trySendAction(GeneratorAction.CreateLoginClick) },
                 onUsernameSubStateOptionClicked = onUsernameOptionClicked,
                 passwordHandlers = passwordHandlers,
                 passphraseHandlers = passphraseHandlers,
@@ -353,6 +372,7 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
     onRegenerateClick: () -> Unit,
     onCopyClick: () -> Unit,
     onSaveClick: () -> Unit,
+    onCreateLoginClick: () -> Unit,
     onUsernameSubStateOptionClicked: (GeneratorState.MainType.Username.UsernameTypeOption) -> Unit,
     passwordHandlers: PasswordHandlers,
     passphraseHandlers: PassphraseHandlers,
@@ -453,7 +473,7 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
                 onShowPreviousCoachMark = onShowPreviousCoachMark,
                 onDismissCoachMark = onDismissCoachMark,
                 onShowNextCoachMark = onShowNextCoachMark,
-                onCopyClick = onCopyClick.takeIf { state.generatorMode is GeneratorMode.Modal },
+                onCopyClick = onCopyClick,
                 modifier = Modifier
                     .standardHorizontalMargin()
                     .fillMaxWidth(),
@@ -466,7 +486,7 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
             GeneratorMode.Default -> {
                 @Suppress("MaxLineLength")
                 coachMarkHighlightItem(
-                    key = ExploreGeneratorCoachMark.COPY_PASSWORD_BUTTON,
+                    key = ExploreGeneratorCoachMark.CREATE_LOGIN_BUTTON,
                     title = BitwardenString.coachmark_6_of_6.asText(),
                     description = BitwardenString
                         .after_you_save_your_new_password_to_bitwarden_don_t_forget_to_update_it_on_your_account_website
@@ -489,10 +509,10 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.ScrollContent(
                         .standardHorizontalMargin(windowAdaptiveInfo = windowAdaptiveInfo),
                 ) {
                     BitwardenFilledButton(
-                        label = stringResource(id = BitwardenString.copy),
-                        onClick = onCopyClick,
+                        label = stringResource(id = BitwardenString.create_login),
+                        onClick = onCreateLoginClick,
                         modifier = Modifier
-                            .testTag(tag = "CopyValueButton")
+                            .testTag(tag = "CreateLoginButton")
                             .fillMaxWidth(),
                     )
                 }
@@ -622,7 +642,7 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.GeneratedStringItem(
     onShowPreviousCoachMark: () -> Unit,
     onDismissCoachMark: () -> Unit,
     onShowNextCoachMark: () -> Unit,
-    onCopyClick: (() -> Unit)?,
+    onCopyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BitwardenTextField(
@@ -659,14 +679,12 @@ private fun CoachMarkScope<ExploreGeneratorCoachMark>.GeneratedStringItem(
                     modifier = Modifier.testTag("RegenerateValueButton"),
                 )
             }
-            onCopyClick?.let {
-                BitwardenStandardIconButton(
-                    vectorIconRes = BitwardenDrawable.ic_copy,
-                    contentDescription = stringResource(id = BitwardenString.copy),
-                    onClick = it,
-                    modifier = Modifier.testTag(tag = "CopyValueButton"),
-                )
-            }
+            BitwardenStandardIconButton(
+                vectorIconRes = BitwardenDrawable.ic_copy,
+                contentDescription = stringResource(id = BitwardenString.copy),
+                onClick = onCopyClick,
+                modifier = Modifier.testTag(tag = "CopyValueButton"),
+            )
         },
         onValueChange = {},
         readOnly = true,
@@ -1624,6 +1642,7 @@ private fun RandomWordIncludeNumberToggleItem(
 private fun Generator_preview() {
     BitwardenTheme {
         GeneratorScreen(
+            navigateToVaultAddItem = {},
             onNavigateToPasswordHistory = {},
             onNavigateBack = {},
             onDimNavBarRequest = {},

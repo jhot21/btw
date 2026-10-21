@@ -212,7 +212,9 @@ class VaultAddEditViewModel @Inject constructor(
                                     selectedCollectionId = selectedCollectionId,
                                 ),
                                 isIndividualVaultDisabled = isIndividualVaultDisabled,
-                                type = vaultCipherType.toItemType(),
+                                type = vaultCipherType.toItemType(
+                                    initialData = vaultAddEditType.initialData,
+                                ),
                             )
                     }
 
@@ -2069,7 +2071,9 @@ class VaultAddEditViewModel @Inject constructor(
             }
 
             is UpdateCipherResult.Success -> {
-                specialCircumstanceManager.specialCircumstance = null
+                if (state.shouldClearSpecialCircumstance) {
+                    specialCircumstanceManager.specialCircumstance = null
+                }
                 if (state.shouldExitOnSave) {
                     sendEvent(event = VaultAddEditEvent.ExitApp)
                 } else {

@@ -1333,13 +1333,19 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         }
 
         composeTestRule
-            .onNodeWithTextAfterScroll(text = "Set up authenticator key")
-            .assertIsDisplayed()
+            .onNodeWithTextAfterScroll(text = "Authenticator key")
+            .assertTextEquals("Authenticator key", "••••••••")
             .assertIsNotEnabled()
-
-        composeTestRule.assertScrollableNodeDoesNotExist("Delete")
-        composeTestRule.assertScrollableNodeDoesNotExist("Copy TOTP")
-        composeTestRule.assertScrollableNodeDoesNotExist("Camera")
+        composeTestRule
+            .onNodeWithContentDescription("Show")
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription("Copy TOTP")
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription("Delete")
+            .assertDoesNotExist()
+        composeTestRule.assertScrollableNodeDoesNotExist("Set up authenticator key")
     }
 
     @Test
@@ -4158,6 +4164,54 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
     }
 
     @Test
+    fun `Add field name dialog Okay should be disabled for blank custom field name`() {
+        mutableStateFlow.value = DEFAULT_STATE_SECURE_NOTES
+
+        // Expand the additional options UI before interacting with it
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Additional options")
+            .performClick()
+
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Add field")
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(text = "Text")
+            .performClick()
+
+        composeTestRule
+            .onAllNodesWithText(text = "Okay")
+            .filterToOne(hasAnyAncestor(isDialog()))
+            .assertIsNotEnabled()
+
+        composeTestRule
+            .onAllNodes(hasAnyAncestor(isDialog()))
+            .filterToOne(hasText("Name"))
+            .performTextInput("   ")
+
+        composeTestRule
+            .onAllNodesWithText(text = "Okay")
+            .filterToOne(hasAnyAncestor(isDialog()))
+            .assertIsNotEnabled()
+            .performClick()
+
+        verify(exactly = 0) {
+            viewModel.trySendAction(any<VaultAddEditAction.Common.AddNewCustomFieldClick>())
+        }
+
+        composeTestRule
+            .onAllNodes(hasAnyAncestor(isDialog()))
+            .filterToOne(hasText("Name"))
+            .performTextInput("TestText")
+
+        composeTestRule
+            .onAllNodesWithText(text = "Okay")
+            .filterToOne(hasAnyAncestor(isDialog()))
+            .assertIsEnabled()
+    }
+
+    @Test
     fun `changing hidden field visibility state should send HiddenFieldVisibilityChange`() {
         mutableStateFlow.update {
             it.copy(
@@ -4303,6 +4357,44 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
                     VaultAddEditState.Custom.BooleanField("Test ID 1", "Boolean", false),
                 ),
             )
+        }
+    }
+
+    @Test
+    fun `Edit field name dialog Okay should be disabled for blank custom field name`() {
+        mutableStateFlow.value = DEFAULT_STATE_SECURE_NOTES_CUSTOM_FIELDS
+
+        // Expand the additional options UI before interacting with it
+        composeTestRule
+            .onNodeWithTextAfterScroll(text = "Additional options")
+            .performClick()
+
+        composeTestRule
+            .onAllNodesWithContentDescriptionAfterScroll("Edit")
+            .onFirst()
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText("Edit")
+            .performClick()
+
+        composeTestRule
+            .onAllNodesWithText(text = "Okay")
+            .filterToOne(hasAnyAncestor(isDialog()))
+            .assertIsEnabled()
+
+        composeTestRule
+            .onNodeWithText("Name")
+            .performTextClearance()
+
+        composeTestRule
+            .onAllNodesWithText(text = "Okay")
+            .filterToOne(hasAnyAncestor(isDialog()))
+            .assertIsNotEnabled()
+            .performClick()
+
+        verify(exactly = 0) {
+            viewModel.trySendAction(any<VaultAddEditAction.Common.CustomFieldValueChange>())
         }
     }
 
@@ -4642,7 +4734,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
     fun `should display policy warning when personal vault is disabled for add item type`() {
         mutableStateFlow.update {
             it.copy(
-                vaultAddEditType = VaultAddEditType.AddItem,
+                vaultAddEditType = VaultAddEditType.AddItem(),
                 viewState = VaultAddEditState.ViewState.Content(
                     common = VaultAddEditState.ViewState.Content.Common(
                         originalCipher = createMockCipherView(1),
@@ -5058,7 +5150,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
     @Test
     fun `learn about add logins card should show when state is add mode, login type content, and should show coach mark tour is true`() {
         mutableStateFlow.value = DEFAULT_STATE_LOGIN.copy(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             shouldShowCoachMarkTour = true,
         )
 
@@ -5071,7 +5163,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
     @Test
     fun `learn about add logins card should not show when state is add mode, login type content, and should show coach mark tour is false`() {
         mutableStateFlow.value = DEFAULT_STATE_LOGIN.copy(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             shouldShowCoachMarkTour = false,
         )
 
@@ -5131,7 +5223,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
     @Test
     fun `when learn about logins card is showing, clicking the call to action sends StartLearnAboutLogins action`() {
         mutableStateFlow.value = DEFAULT_STATE_LOGIN.copy(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             shouldShowCoachMarkTour = true,
         )
 
@@ -5510,7 +5602,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             ),
             dialog = VaultAddEditState.DialogState.Generic(message = "test".asText()),
             bottomSheetState = null,
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
             hasPremium = false,
@@ -5519,7 +5611,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         )
 
         private val DEFAULT_STATE_LOGIN = VaultAddEditState(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.LOGIN,
             viewState = VaultAddEditState.ViewState.Content(
                 common = VaultAddEditState.ViewState.Content.Common(),
@@ -5536,7 +5628,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         )
 
         private val DEFAULT_STATE_IDENTITY = VaultAddEditState(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.IDENTITY,
             viewState = VaultAddEditState.ViewState.Content(
                 common = VaultAddEditState.ViewState.Content.Common(),
@@ -5553,7 +5645,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         )
 
         private val DEFAULT_STATE_CARD = VaultAddEditState(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.CARD,
             viewState = VaultAddEditState.ViewState.Content(
                 common = VaultAddEditState.ViewState.Content.Common(),
@@ -5570,7 +5662,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         )
 
         private val DEFAULT_STATE_BANK_ACCOUNT = VaultAddEditState(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.BANK_ACCOUNT,
             viewState = VaultAddEditState.ViewState.Content(
                 common = VaultAddEditState.ViewState.Content.Common(),
@@ -5587,7 +5679,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         )
 
         private val DEFAULT_STATE_LICENSE = VaultAddEditState(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.DRIVERS_LICENSE,
             viewState = VaultAddEditState.ViewState.Content(
                 common = VaultAddEditState.ViewState.Content.Common(),
@@ -5604,7 +5696,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         )
 
         private val DEFAULT_STATE_PASSPORT = VaultAddEditState(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.PASSPORT,
             viewState = VaultAddEditState.ViewState.Content(
                 common = VaultAddEditState.ViewState.Content.Common(),
@@ -5638,7 +5730,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
             ),
             dialog = null,
             bottomSheetState = null,
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.SECURE_NOTE,
             shouldShowCoachMarkTour = false,
             defaultUriMatchType = UriMatchTypeModel.EXACT,
@@ -5648,7 +5740,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         )
 
         private val DEFAULT_STATE_SECURE_NOTES = VaultAddEditState(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.SECURE_NOTE,
             viewState = VaultAddEditState.ViewState.Content(
                 common = VaultAddEditState.ViewState.Content.Common(),
@@ -5665,7 +5757,7 @@ class VaultAddEditScreenTest : BitwardenComposeTest() {
         )
 
         private val DEFAULT_STATE_SSH_KEYS = VaultAddEditState(
-            vaultAddEditType = VaultAddEditType.AddItem,
+            vaultAddEditType = VaultAddEditType.AddItem(),
             cipherType = VaultItemCipherType.SSH_KEY,
             viewState = VaultAddEditState.ViewState.Content(
                 common = VaultAddEditState.ViewState.Content.Common(),
