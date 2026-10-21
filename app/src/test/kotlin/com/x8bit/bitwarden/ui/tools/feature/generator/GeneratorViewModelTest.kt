@@ -31,25 +31,18 @@ import com.x8bit.bitwarden.data.tools.generator.repository.model.GeneratorResult
 import com.x8bit.bitwarden.data.tools.generator.repository.model.PasscodeGenerationOptions
 import com.x8bit.bitwarden.data.tools.generator.repository.model.UsernameGenerationOptions
 import com.x8bit.bitwarden.data.tools.generator.repository.util.FakeGeneratorRepository
-<<<<<<< HEAD
 // PASSGEN: fork-only imports
 import com.x8bit.bitwarden.data.tools.passgen.algorithm.PassgenAlgorithm
 import com.x8bit.bitwarden.data.tools.passgen.model.GeneratedPassgenResult
 import com.x8bit.bitwarden.data.tools.passgen.model.PassgenOptions
 import com.x8bit.bitwarden.data.tools.passgen.model.PassgenSettings
 import com.x8bit.bitwarden.data.tools.passgen.repository.PassgenRepository
-import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockPolicyView
-import com.x8bit.bitwarden.ui.tools.feature.generator.GeneratorState.MainType.Username.UsernameType.ForwardedEmailAlias.ServiceType
-import com.x8bit.bitwarden.ui.tools.feature.generator.GeneratorState.MainType.Username.UsernameType.ForwardedEmailAlias.ServiceTypeOption
-import com.x8bit.bitwarden.ui.tools.feature.generator.model.GeneratorMode
-import io.mockk.coEvery
-=======
 import com.x8bit.bitwarden.data.vault.datasource.sdk.model.createMockSdkPolicy
 import com.x8bit.bitwarden.ui.tools.feature.generator.GeneratorState.MainType.Username.UsernameType.ForwardedEmailAlias.ServiceType
 import com.x8bit.bitwarden.ui.tools.feature.generator.GeneratorState.MainType.Username.UsernameType.ForwardedEmailAlias.ServiceTypeOption
 import com.x8bit.bitwarden.ui.tools.feature.generator.model.GeneratorMode
 import com.x8bit.bitwarden.ui.vault.model.VaultAddEditType
->>>>>>> upstream/main
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk

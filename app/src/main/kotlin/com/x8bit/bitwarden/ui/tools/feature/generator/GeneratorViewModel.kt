@@ -749,6 +749,7 @@ class GeneratorViewModel @Inject constructor(
 
                     GeneratorState.MainTypeOption.PASSWORD,
                     GeneratorState.MainTypeOption.PASSPHRASE,
+                    GeneratorState.MainTypeOption.PASSGEN, // PASSGEN: create-login
                         -> {
                         VaultAddEditType.AddItem.InitialData.Password(value = state.generatedText)
                     }
