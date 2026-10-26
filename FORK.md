@@ -133,32 +133,26 @@ The standard flavor's debug build needs google-services.json for the app's packa
 
 Because the ID differs from upstream, the official Bitwarden app can be installed alongside this one.
 
-## Building a signed APK
+## Building locally
+
+For testing, not for publishing (releases are built and signed by CI, see Releasing).
 
 ```bash
-JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
-  ./gradlew :app:assembleFdroidRelease
+GITHUB_TOKEN=$(gh auth token) mise exec java@21.0.2 -- ./gradlew :app:assembleFdroidRelease
 ```
 
-Use the F-Droid flavor: it needs no `google-services.json`. The standard flavor's release build does,
-and this fork doesn't ship one. Output: `app/build/outputs/apk/fdroid/release/me.jhot.btw-fdroid.apk`.
-Gradle does not sign release builds here, so that APK is unsigned. Sign it with the build-tools from
-`$ANDROID_HOME` (or `~/Library/Android/sdk`):
+- Use the F-Droid flavor: it needs no `google-services.json`. The standard flavor needs one for
+  `me.jhot.btw` and this fork doesn't ship it, which is also why upstream's `test.yml` is disabled.
+- The repo has no `mise.toml`, so name the JDK explicitly (Java 21).
+- Gradle pulls `bitwarden/sdk` from GitHub Packages and gets a 401 without a token with
+  `read:packages`; passing `gh auth token` through the environment avoids writing it anywhere.
+- Output is `app/build/outputs/apk/fdroid/release/me.jhot.btw-fdroid.apk`, unsigned with
+  `versionCode` 1. Don't publish it.
 
-```bash
-BT="${ANDROID_HOME:-$HOME/Library/Android/sdk}/build-tools/<version>"
-APK=app/build/outputs/apk/fdroid/release/me.jhot.btw-fdroid.apk
-"$BT/zipalign" -p -f 4 "$APK" aligned.apk
-"$BT/apksigner" sign --ks <keystore> --out btw-release.apk aligned.apk
-"$BT/apksigner" verify --verbose btw-release.apk
-```
-
-`apksigner sign` prompts for the keystore password; never put the password on the command line.
-Add `--ks-key-alias <alias>` only if the keystore holds several keys.
-
-Keep the keystore outside the repository (e.g. `~/.android-signing/`) and never commit it. Back it
-up somewhere safe: if it is lost, installed copies cannot be updated in place (a new key means
-uninstalling first, losing local data).
+Keep the release keystore (`~/.android-signing/btw-release.jks`, alias `btw`) outside the repository
+and never commit it. Back it up somewhere safe: if it is lost, installed copies cannot be updated in
+place (a new key means uninstalling first, losing local data). CI holds a copy in the
+`RELEASE_KEYSTORE_BASE64` secret, which GitHub won't let you read back.
 
 ## Releasing
 
@@ -189,5 +183,5 @@ fork and are not mirrored: the sync workflow fetches `main` only, so none come b
 Sideloaded installs need "Allow restricted settings" in the app's info page before the
 accessibility service can be enabled. Never commit the APK or the keystore.
 
-The manual steps under "Building a signed APK" still work as a fallback, but a hand-built APK has
-`versionCode` 1, so don't publish one.
+Fork build 1 was signed by hand; from `-fork.2` on, every release comes from the tag workflow.
+Don't hand-sign and publish an APK: a local build has `versionCode` 1.
