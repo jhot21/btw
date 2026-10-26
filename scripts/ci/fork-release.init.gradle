@@ -1,0 +1,25 @@
+// Gradle init script used only by .github/workflows/fork-release.yml (--init-script).
+//
+// Injects the release versionCode and signing config from Gradle properties, so no upstream
+// build file needs a fork hook. Without the properties it does nothing, so local builds are
+// unchanged. See FORK.md "Releasing".
+allprojects { p ->
+    // afterEvaluate so these win over the values app/build.gradle.kts sets in defaultConfig.
+    p.afterEvaluate {
+        if (!p.plugins.hasPlugin('com.android.application')) return
+
+        if (p.hasProperty('FORK_VERSION_CODE')) {
+            p.android.defaultConfig.versionCode = p.property('FORK_VERSION_CODE').toInteger()
+        }
+
+        if (p.hasProperty('FORK_STORE_FILE')) {
+            def signing = p.android.signingConfigs.create('forkRelease') {
+                storeFile p.file(p.property('FORK_STORE_FILE'))
+                storePassword p.property('FORK_STORE_PASSWORD')
+                keyAlias p.property('FORK_KEY_ALIAS')
+                keyPassword p.property('FORK_KEY_PASSWORD')
+            }
+            p.android.buildTypes.getByName('release').signingConfig = signing
+        }
+    }
+}

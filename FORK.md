@@ -162,26 +162,32 @@ uninstalling first, losing local data).
 
 ## Releasing
 
-Releases are published only as GitHub releases on this fork. The upstream tags were removed from
-the fork and are not mirrored: the sync workflow fetches `main` only, so none come back.
+Releases are published only as GitHub releases on this fork, built and signed by
+`.github/workflows/fork-release.yml` when a tag is pushed. The upstream tags were removed from the
+fork and are not mirrored: the sync workflow fetches `main` only, so none come back.
 
-- Tag format: `btw-v<versionName>-fork.<N>`, e.g. `btw-v2026.9.0-fork.1`. `versionName` is the
+- Tag format: `btw-v<versionName>-fork.<N>`, e.g. `btw-v2026.9.0-fork.2`. `versionName` is the
   app's version (from upstream); `N` counts fork builds of that version, starting at 1. The `btw-`
   prefix keeps the names from ever colliding with an upstream tag.
-- Always release from a commit on `main`, built and signed as described above.
+- To release: make sure `main` is what you want to ship, then
+  `git tag btw-v2026.9.0-fork.2 && git push origin btw-v2026.9.0-fork.2`.
+- The tag's version must equal `appVersionName` in `gradle/libs.versions.toml`, and the tagged
+  commit must be on `main`; the workflow fails otherwise.
+- `versionCode` is derived from the tag as `YYYYMMPPNN` (2026.9.0 fork.2 → `2026090002`), so it
+  always increases and never needs bumping by hand. The workflow also fails if it is not greater
+  than the previous release's. (Fork build 1 shipped with `versionCode` 1; any derived code is
+  higher.)
+- Signing happens in CI through `scripts/ci/fork-release.init.gradle`, a Gradle init script that
+  injects the version code and signing config, so no upstream build file carries a hook. The
+  workflow refuses to publish unless the APK's signing certificate is the one in
+  `EXPECTED_CERT_SHA256`; changing keys means installed copies can't update in place.
+- Repo secrets: `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`,
+  `RELEASE_KEY_PASSWORD`. Keep the keystore itself backed up outside the repo too.
+- The release gets the APK, `SHA256SUMS`, and notes with the package ID, commit, certificate and
+  APK SHA-256, plus GitHub's generated changelog.
 
-```bash
-VERSION=2026.9.0 N=1
-TAG="btw-v$VERSION-fork.$N"
-REL="$(mktemp -d)"  # outside the repo, so the APK can never be committed
-cp btw-release.apk "$REL/me.jhot.btw-fdroid-$VERSION.apk"
-(cd "$REL" && shasum -a 256 "me.jhot.btw-fdroid-$VERSION.apk" > SHA256SUMS)
-gh release create "$TAG" -R jhot21/btw --target "$(git rev-parse HEAD)" \
-  --title "btw $VERSION (fork build $N)" --notes-file "$REL/notes.md" \
-  "$REL/me.jhot.btw-fdroid-$VERSION.apk" "$REL/SHA256SUMS"
-```
-
-`$REL/notes.md` should give the package ID, the upstream sync date it is based on, the APK's
-SHA-256, and the signing certificate's SHA-256 (`apksigner verify --print-certs btw-release.apk`).
-Note that sideloaded installs need "Allow restricted settings" in the app's info page before the
+Sideloaded installs need "Allow restricted settings" in the app's info page before the
 accessibility service can be enabled. Never commit the APK or the keystore.
+
+The manual steps under "Building a signed APK" still work as a fallback, but a hand-built APK has
+`versionCode` 1, so don't publish one.
