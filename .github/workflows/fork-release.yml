@@ -1,0 +1,153 @@
+name: Fork release
+
+# Pushing a tag like btw-v2026.9.0-fork.2 builds, signs and publishes the F-Droid release APK.
+# versionName comes from the repo (it must match the tag); versionCode is derived from the tag so
+# it always increases. See FORK.md "Releasing".
+
+on:
+  push:
+    tags:
+      - 'btw-v*-fork.*'
+
+permissions:
+  contents: write
+  packages: read
+
+env:
+  # The signing certificate every release must carry, so installs keep updating in place.
+  EXPECTED_CERT_SHA256: 01f4437ce2c8e8aebd639977e68a6bbea522c7dcabefa7041fd759c9a9b95e79
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive version from tag
+        id: version
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^btw-v([0-9]+)\.([0-9]+)\.([0-9]+)-fork\.([0-9]+)$ ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match btw-v<year>.<month>.<patch>-fork.<N>"
+            exit 1
+          fi
+          year=${BASH_REMATCH[1]} month=${BASH_REMATCH[2]} patch=${BASH_REMATCH[3]} n=${BASH_REMATCH[4]}
+          if (( month > 99 || patch > 99 || n > 99 )); then
+            echo "::error::month, patch and fork number must each be at most 99"
+            exit 1
+          fi
+          name="$year.$month.$patch"
+          # YYYYMMPPNN, e.g. 2026.9.0 fork.2 -> 2026090002. Increases with every release and stays
+          # below Android's 2100000000 versionCode limit until 2100.
+          code=$(( ((year * 100 + month) * 100 + patch) * 100 + n ))
+          if (( code > 2100000000 )); then
+            echo "::error::versionCode $code exceeds Android's 2100000000 limit"
+            exit 1
+          fi
+          repo_name=$(sed -nE 's/^appVersionName = "(.*)"$/\1/p' gradle/libs.versions.toml)
+          if [[ "$repo_name" != "$name" ]]; then
+            echo "::error::Tag version $name does not match appVersionName $repo_name in gradle/libs.versions.toml"
+            exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "versionName $name, versionCode $code"
+
+      - name: Require the tagged commit to be on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_SHA is not on main. Release only from main."
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      - name: Build signed release APK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG_GRADLE_PROJECT_FORK_VERSION_CODE: ${{ steps.version.outputs.code }}
+          ORG_GRADLE_PROJECT_FORK_STORE_FILE: ${{ runner.temp }}/release.keystore
+          ORG_GRADLE_PROJECT_FORK_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_FORK_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_FORK_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew --init-script scripts/ci/fork-release.init.gradle :app:assembleFdroidRelease
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.keystore"
+
+      - name: Verify the APK
+        id: apk
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          built=$(ls app/build/outputs/apk/fdroid/release/*.apk)
+
+          cert=$("$bt/apksigner" verify --print-certs "$built" | sed -nE 's/.*certificate SHA-256 digest: //p' | head -1)
+          if [[ "$cert" != "$EXPECTED_CERT_SHA256" ]]; then
+            echo "::error::Signing certificate $cert is not the expected $EXPECTED_CERT_SHA256"
+            exit 1
+          fi
+
+          code=$("$bt/aapt2" dump badging "$built" | grep -oP "versionCode='\K[0-9]+")
+          if [[ "$code" != "$EXPECTED_CODE" ]]; then
+            echo "::error::APK versionCode $code is not the expected $EXPECTED_CODE"
+            exit 1
+          fi
+
+          prev_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' || true)
+          if [[ -n "$prev_tag" ]]; then
+            mkdir "$RUNNER_TEMP/prev"
+            gh release download "$prev_tag" --pattern '*.apk' --dir "$RUNNER_TEMP/prev"
+            prev_code=$("$bt/aapt2" dump badging "$RUNNER_TEMP"/prev/*.apk | grep -oP "versionCode='\K[0-9]+")
+            if (( code <= prev_code )); then
+              echo "::error::versionCode $code is not greater than $prev_tag's $prev_code"
+              exit 1
+            fi
+          fi
+
+          name="me.jhot.btw-fdroid-${{ steps.version.outputs.name }}-fork.${GITHUB_REF_NAME##*.}.apk"
+          mkdir release
+          cp "$built" "release/$name"
+          (cd release && shasum -a 256 "$name" > SHA256SUMS)
+          echo "cert=$cert" >> "$GITHUB_OUTPUT"
+          echo "sha=$(cut -d' ' -f1 release/SHA256SUMS)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          CERT: ${{ steps.apk.outputs.cert }}
+          APK_SHA: ${{ steps.apk.outputs.sha }}
+        run: |
+          n=${GITHUB_REF_NAME##*.}
+          cat > "$RUNNER_TEMP/notes.md" <<EOF
+          Fork build $n of $VERSION_NAME: Bitwarden Android (F-Droid flavor) with a Passgen generator option and launcher shortcut.
+
+          - Package: \`me.jhot.btw\` (installs alongside the official Bitwarden app)
+          - App version $VERSION_NAME (versionCode $VERSION_CODE)
+          - Built from commit \`$GITHUB_SHA\`
+          - Signing certificate SHA-256: \`$CERT\`
+          - APK SHA-256: \`$APK_SHA\`
+
+          Sideloaded apps need "Allow restricted settings" (App info, ⋮ menu) before the accessibility service can be enabled.
+          EOF
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --title "btw $VERSION_NAME (fork build $n)" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --generate-notes
