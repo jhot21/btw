@@ -1,0 +1,79 @@
+name: Fork tests
+
+# Replaces upstream's test.yml, which is disabled here: it builds the standard flavor, which needs a
+# google-services.json for the fork's package. This runs the same suites against the F-Droid flavor
+# by calling Gradle directly, so upstream's Fastfile stays untouched and syncs don't conflict.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Gradle authenticates to maven.pkg.github.com/bitwarden/sdk (settings.gradle.kts) using
+  # GITHUB_TOKEN as the package-registry password; this needs read:packages.
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Detekt and lint
+        run: ./gradlew detekt lintFdroidDebug lintDebug
+
+  app-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: App unit tests
+        run: ./gradlew :app:testFdroidDebugUnitTest
+
+  library-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Library unit tests
+        # :cxf has product flavors, so it has no testDebugUnitTest; the F-Droid flavor is the one
+        # this fork ships.
+        run: >
+          ./gradlew
+          :authenticator:testDebugUnitTest
+          :core:testDebugUnitTest
+          :network:testDebugUnitTest
+          :authenticatorbridge:testDebugUnitTest
+          :testharness:testDebugUnitTest
+          :data:testDebugUnitTest
+          :ui:testDebugUnitTest
+          :cxf:testFdroidDebugUnitTest

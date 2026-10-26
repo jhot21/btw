@@ -14,8 +14,12 @@ This is a maintained fork of [bitwarden/android](https://github.com/bitwarden/an
 - Every edit to an upstream file carries a marker and is listed under **Hooks** below: `// PASSGEN:` in Kotlin, or a standalone `<!-- PASSGEN: ... -->` comment line in XML.
 - Upstream-sync PRs **must be merged with a merge commit** (never squash or rebase), otherwise every
   later sync re-conflicts on the same hunks.
-- Upstream's own workflows are disabled in this repo's Actions settings (they need Bitwarden secrets).
-  Don't edit them.
+- Upstream's own workflows are disabled in this repo's Actions settings (they need Bitwarden secrets
+  or the standard flavor's google-services.json). Don't edit them. Only these stay enabled:
+  `fork-checks.yml` (hooks and passgen tests), `fork-tests.yml` (detekt, lint and the full unit
+  suites on the F-Droid flavor, replacing upstream's `test.yml`), `upstream-sync.yml`, and the
+  reusable `_version.yml`. After a sync adds a new upstream workflow, disable it with
+  `gh workflow disable <file> -R jhot21/btw`.
 - `fork-checks.yml`'s `passgen-tests` job needs `read:packages` to pull `bitwarden/sdk` from
   `maven.pkg.github.com` (see `settings.gradle.kts`); it uses the default `GITHUB_TOKEN`. If that
   token ever gets a 401 for bitwarden's package, store a classic PAT with the `read:packages` scope
