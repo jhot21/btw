@@ -46,14 +46,11 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.mockkStatic
 import io.mockk.runs
-import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -137,6 +134,7 @@ class GeneratorViewModelTest : BaseViewModelTest() {
         } returns mutableUpgradedToPremiumCardEligibleFlow
     }
 
+<<<<<<< HEAD
     private val passgenRepository: PassgenRepository = mockk(relaxed = true) { // PASSGEN:
         every { getSettings() } returns PassgenSettings(salt = "salt")
     }
@@ -151,6 +149,8 @@ class GeneratorViewModelTest : BaseViewModelTest() {
         unmockkStatic(SavedStateHandle::toGeneratorArgs)
     }
 
+=======
+>>>>>>> upstream/main
     @Test
     fun `initial state should be correct when there is no saved state`() {
         val viewModel = createViewModel(state = null)
@@ -2887,7 +2887,9 @@ class GeneratorViewModelTest : BaseViewModelTest() {
 
     private fun createViewModel(
         savedStateHandle: SavedStateHandle,
+        generatorMode: GeneratorMode = GeneratorMode.Default,
     ): GeneratorViewModel = GeneratorViewModel(
+        generatorMode = generatorMode,
         savedStateHandle = savedStateHandle,
         clipboardManager = clipboardManager,
         generatorRepository = fakeGeneratorRepository,
@@ -2903,10 +2905,8 @@ class GeneratorViewModelTest : BaseViewModelTest() {
         state: GeneratorState? = initialPasscodeState,
         type: GeneratorMode = GeneratorMode.Default,
     ): GeneratorViewModel = createViewModel(
-        savedStateHandle = SavedStateHandle().apply {
-            set("state", state)
-            every { toGeneratorArgs() } returns GeneratorArgs(type = type)
-        },
+        savedStateHandle = SavedStateHandle().apply { set("state", state) },
+        generatorMode = type,
     )
 
     //endregion Helper Functions

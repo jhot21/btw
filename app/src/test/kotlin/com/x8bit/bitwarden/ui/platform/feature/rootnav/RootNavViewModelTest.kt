@@ -613,7 +613,10 @@ class RootNavViewModelTest : BaseViewModelTest() {
         )
         val viewModel = createViewModel()
         assertEquals(
-            RootNavState.VaultUnlockedForNewSend(sendType = SendItemType.TEXT),
+            RootNavState.VaultUnlockedForNewSend(
+                activeUserId = "activeUserId",
+                sendType = SendItemType.TEXT,
+            ),
             viewModel.stateFlow.value,
         )
     }
@@ -660,6 +663,7 @@ class RootNavViewModelTest : BaseViewModelTest() {
         val viewModel = createViewModel()
         assertEquals(
             RootNavState.VaultUnlockedForAutofillSave(
+                activeUserId = "activeUserId",
                 autofillSaveItem = autofillSaveItem,
             ),
             viewModel.stateFlow.value,
@@ -839,6 +843,7 @@ class RootNavViewModelTest : BaseViewModelTest() {
         val viewModel = createViewModel()
         assertEquals(
             RootNavState.VaultUnlockedForCreatePasswordRequest(
+                activeUserId = "activeUserId",
                 username = mockUsername,
                 password = mockPassword,
                 uri = "androidapp://$mockPackageName",
@@ -1719,7 +1724,10 @@ class RootNavViewModelTest : BaseViewModelTest() {
         val viewModel = createViewModel()
 
         assertEquals(
-            RootNavState.VaultUnlockedForAutofillSave(autofillSaveItem = autofillSaveItem),
+            RootNavState.VaultUnlockedForAutofillSave(
+                activeUserId = "activeUserId",
+                autofillSaveItem = autofillSaveItem,
+            ),
             viewModel.stateFlow.value,
         )
     }
