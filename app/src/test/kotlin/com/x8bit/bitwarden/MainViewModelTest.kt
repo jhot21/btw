@@ -12,7 +12,6 @@ import androidx.credentials.providerevents.transfer.ProviderImportCredentialsReq
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.bitwarden.core.data.manager.dispatcher.FakeDispatcherManager
-import com.bitwarden.core.data.manager.model.FlagKey
 import com.bitwarden.core.data.manager.toast.ToastManager
 import com.bitwarden.core.data.repository.util.bufferedMutableSharedFlow
 import com.bitwarden.cxf.model.ImportCredentialsRequestData
@@ -57,7 +56,6 @@ import com.x8bit.bitwarden.data.credentials.model.Fido2CredentialAssertionReques
 import com.x8bit.bitwarden.data.credentials.model.GetCredentialsRequest
 import com.x8bit.bitwarden.data.credentials.model.ProviderGetPasswordCredentialRequest
 import com.x8bit.bitwarden.data.platform.manager.AppResumeManager
-import com.x8bit.bitwarden.data.platform.manager.FeatureFlagManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManager
 import com.x8bit.bitwarden.data.platform.manager.SpecialCircumstanceManagerImpl
 import com.x8bit.bitwarden.data.platform.manager.garbage.GarbageCollectionManager
@@ -113,15 +111,6 @@ class MainViewModelTest : BaseViewModelTest() {
     private val mutableAppLanguageFlow = MutableStateFlow(AppLanguage.DEFAULT)
     private val mutableScreenCaptureAllowedFlow = MutableStateFlow(true)
     private val mutableIsDynamicColorsEnabledFlow = MutableStateFlow(false)
-    private val mutableIsVfo1FoundationEnabledFlow = MutableStateFlow(false)
-    private val featureFlagManager = mockk<FeatureFlagManager> {
-        every {
-            getFeatureFlag(FlagKey.Vfo1Foundation)
-        } answers { mutableIsVfo1FoundationEnabledFlow.value }
-        every {
-            getFeatureFlagFlow(FlagKey.Vfo1Foundation)
-        } returns mutableIsVfo1FoundationEnabledFlow
-    }
     private val settingsRepository = mockk<SettingsRepository> {
         every { appTheme } returns AppTheme.DEFAULT
         every { appThemeStateFlow } returns mutableAppThemeFlow
@@ -1333,7 +1322,6 @@ class MainViewModelTest : BaseViewModelTest() {
             isScreenCaptureAllowed = settingsRepository.isScreenCaptureAllowed,
             isDynamicColorsEnabled = settingsRepository.isDynamicColorsEnabled,
             hasResizeBeenRequested = false,
-            isVfo1FoundationEnabled = false,
         )
         viewModel.stateFlow.test {
             assertEquals(
@@ -1350,16 +1338,6 @@ class MainViewModelTest : BaseViewModelTest() {
         }
     }
 
-    @Test
-    fun `on Vfo1Foundation flag update should update the state`() = runTest {
-        val viewModel = createViewModel()
-        viewModel.stateFlow.test {
-            assertEquals(DEFAULT_STATE, awaitItem())
-            mutableIsVfo1FoundationEnabledFlow.value = true
-            assertEquals(DEFAULT_STATE.copy(isVfo1FoundationEnabled = true), awaitItem())
-        }
-    }
-
     private fun createViewModel(
         initialSpecialCircumstance: SpecialCircumstance? = null,
     ): MainViewModel = MainViewModel(
@@ -1371,7 +1349,6 @@ class MainViewModelTest : BaseViewModelTest() {
         credentialProviderRequestManager = credentialProviderRequestManager,
         shareManager = shareManager,
         settingsRepository = settingsRepository,
-        featureFlagManager = featureFlagManager,
         vaultRepository = vaultRepository,
         authRepository = authRepository,
         clock = FIXED_CLOCK,
@@ -1389,7 +1366,6 @@ private val DEFAULT_STATE: MainState = MainState(
     isScreenCaptureAllowed = true,
     isDynamicColorsEnabled = false,
     hasResizeBeenRequested = false,
-    isVfo1FoundationEnabled = false,
 )
 
 private val DEFAULT_FIRST_TIME_STATE = FirstTimeState(
