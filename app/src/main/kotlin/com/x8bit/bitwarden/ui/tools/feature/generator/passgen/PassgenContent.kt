@@ -5,15 +5,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import com.bitwarden.ui.platform.base.util.LifecycleEventEffect
 import com.bitwarden.ui.platform.components.button.BitwardenStandardIconButton
 import com.bitwarden.ui.platform.components.card.BitwardenInfoCalloutCard
 import com.bitwarden.ui.platform.components.field.BitwardenPasswordField
 import com.bitwarden.ui.platform.components.field.BitwardenTextField
+import com.bitwarden.ui.platform.components.field.model.TextToolbarType
 import com.bitwarden.ui.platform.components.model.CardStyle
 import com.bitwarden.ui.platform.components.segment.BitwardenSegmentedButton
 import com.bitwarden.ui.platform.components.segment.SegmentedButtonState
@@ -94,23 +101,30 @@ fun PassgenContent(
                 },
             )
         }
-        BitwardenTextField(
+        // Local state on purpose: it is dropped when the passgen tab leaves composition, so the
+        // salt is masked again on every return. It is also re-masked as soon as the app pauses,
+        // which covers the recents screenshot and backgrounding.
+        var showSalt by remember { mutableStateOf(false) }
+        LifecycleEventEffect { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) showSalt = false
+        }
+        BitwardenPasswordField(
             label = stringResource(R.string.passgen_salt),
             value = state.salt,
             onValueChange = { onAction(PassgenAction.SaltChange(it)) },
+            showPassword = showSalt,
+            showPasswordChange = { showSalt = it },
             supportingText = stringResource(R.string.passgen_salt_hint),
             cardStyle = CardStyle.Bottom,
             // Disables autocorrect/suggestions so the salt can't be silently altered.
             keyboardType = KeyboardType.Password,
-            textFieldTestTag = "PassgenSaltField",
+            showPasswordTestTag = "PassgenSaltShowButton",
+            // BitwardenPasswordVisualTransformation isn't Compose's PasswordVisualTransformation,
+            // so Compose doesn't block copy/cut on the masked text itself; disable the toolbar
+            // until the salt is revealed. (This also hides paste while masked.)
+            textToolbarType = if (showSalt) TextToolbarType.DEFAULT else TextToolbarType.NONE,
+            passwordFieldTestTag = "PassgenSaltField",
             modifier = Modifier.fillMaxWidth(),
-            actions = {
-                BitwardenStandardIconButton(
-                    vectorIconRes = BitwardenDrawable.ic_copy,
-                    contentDescription = stringResource(R.string.passgen_copy_salt),
-                    onClick = { onAction(PassgenAction.CopySaltClick) },
-                )
-            },
         )
         Spacer(modifier = Modifier.height(8.dp))
 

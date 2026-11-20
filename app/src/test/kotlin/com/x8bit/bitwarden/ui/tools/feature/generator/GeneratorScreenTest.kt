@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher.Companion.expectValue
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -2040,6 +2041,51 @@ class GeneratorScreenTest : BitwardenComposeTest() {
             .performScrollTo()
             .performTextInput("s")
         verify { viewModel.trySendAction(PassgenAction.SaltChange("s")) }
+    }
+
+    @Test
+    fun `passgen salt is masked by default and can be revealed`() {
+        updateState(
+            DEFAULT_STATE.copy(selectedType = PassgenMainType(salt = "salt")),
+        )
+
+        composeTestRule
+            .onNodeWithTag("PassgenSaltShowButton")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Show")
+            .performClick()
+            .assertContentDescriptionEquals("Hide")
+    }
+
+    @Test
+    fun `passgen salt eye toggles when the salt is empty`() {
+        updateState(DEFAULT_STATE.copy(selectedType = PassgenMainType(salt = "")))
+
+        composeTestRule
+            .onNodeWithTag("PassgenSaltShowButton")
+            .performScrollTo()
+            .performClick()
+            .assertContentDescriptionEquals("Hide")
+    }
+
+    @Test
+    fun `passgen salt is masked again after leaving and returning to the passgen type`() {
+        updateState(DEFAULT_STATE.copy(selectedType = PassgenMainType(salt = "salt")))
+        composeTestRule
+            .onNodeWithTag("PassgenSaltShowButton")
+            .performScrollTo()
+            .performClick()
+            .assertContentDescriptionEquals("Hide")
+
+        updateState(DEFAULT_STATE)
+        // Let the passgen content actually leave composition before returning to it.
+        composeTestRule.waitForIdle()
+        updateState(DEFAULT_STATE.copy(selectedType = PassgenMainType(salt = "salt")))
+
+        composeTestRule
+            .onNodeWithTag("PassgenSaltShowButton")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Show")
     }
 
     //endregion Passgen Tests

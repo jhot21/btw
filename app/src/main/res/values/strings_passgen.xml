@@ -17,5 +17,4 @@
     <string name="passgen_custom_ambiguous">Custom ambiguous characters</string>
     <string name="passgen_custom_ambiguous_hint">Empty uses Il1O05S</string>
     <string name="passgen_copy_passphrase">Copy passphrase</string>
-    <string name="passgen_copy_salt">Copy salt</string>
 </resources>

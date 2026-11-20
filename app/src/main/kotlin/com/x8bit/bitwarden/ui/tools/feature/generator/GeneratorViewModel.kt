@@ -1973,11 +1973,6 @@ class GeneratorViewModel @AssistedInject constructor(
                     ?.let { clipboardManager.setText(text = it) }
             }
 
-            PassgenAction.CopySaltClick -> {
-                current.salt.takeIf { it.isNotEmpty() }
-                    ?.let { clipboardManager.setText(text = it, isSensitive = false) }
-            }
-
             else -> updateGeneratorMainType { current.reduce(action) }
         }
     }
