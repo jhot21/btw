@@ -14,6 +14,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import com.bitwarden.ui.platform.base.util.LifecycleEventEffect
 import com.bitwarden.ui.platform.components.button.BitwardenStandardIconButton
 import com.bitwarden.ui.platform.components.card.BitwardenInfoCalloutCard
 import com.bitwarden.ui.platform.components.field.BitwardenPasswordField
@@ -100,8 +102,12 @@ fun PassgenContent(
             )
         }
         // Local state on purpose: it is dropped when the passgen tab leaves composition, so the
-        // salt is masked again on every return.
+        // salt is masked again on every return. It is also re-masked as soon as the app pauses,
+        // which covers the recents screenshot and backgrounding.
         var showSalt by remember { mutableStateOf(false) }
+        LifecycleEventEffect { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) showSalt = false
+        }
         BitwardenPasswordField(
             label = stringResource(R.string.passgen_salt),
             value = state.salt,
