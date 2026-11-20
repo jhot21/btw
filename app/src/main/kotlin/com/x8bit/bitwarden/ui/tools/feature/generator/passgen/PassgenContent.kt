@@ -18,6 +18,7 @@ import com.bitwarden.ui.platform.components.button.BitwardenStandardIconButton
 import com.bitwarden.ui.platform.components.card.BitwardenInfoCalloutCard
 import com.bitwarden.ui.platform.components.field.BitwardenPasswordField
 import com.bitwarden.ui.platform.components.field.BitwardenTextField
+import com.bitwarden.ui.platform.components.field.model.TextToolbarType
 import com.bitwarden.ui.platform.components.model.CardStyle
 import com.bitwarden.ui.platform.components.segment.BitwardenSegmentedButton
 import com.bitwarden.ui.platform.components.segment.SegmentedButtonState
@@ -112,6 +113,10 @@ fun PassgenContent(
             // Disables autocorrect/suggestions so the salt can't be silently altered.
             keyboardType = KeyboardType.Password,
             showPasswordTestTag = "PassgenSaltShowButton",
+            // BitwardenPasswordVisualTransformation isn't Compose's PasswordVisualTransformation,
+            // so Compose doesn't block copy/cut on the masked text itself; disable the toolbar
+            // until the salt is revealed. (This also hides paste while masked.)
+            textToolbarType = if (showSalt) TextToolbarType.DEFAULT else TextToolbarType.NONE,
             passwordFieldTestTag = "PassgenSaltField",
             modifier = Modifier.fillMaxWidth(),
         )

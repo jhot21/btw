@@ -24,7 +24,7 @@ This is a maintained fork of [bitwarden/android](https://github.com/bitwarden/an
   `maven.pkg.github.com` (see `settings.gradle.kts`); it uses the default `GITHUB_TOKEN`. If that
   token ever gets a 401 for bitwarden's package, store a classic PAT with the `read:packages` scope
   as a repo secret (e.g. `PACKAGES_TOKEN`) and reference it in that job's `GITHUB_TOKEN` env instead.
-- The passgen salt is stored only on the device. Back it up (Generator → Passgen → copy salt):
+- The passgen salt is stored only on the device. Back it up (Generator → Passgen → reveal the salt with the eye button, then select and copy it):
   clearing app data without a backup makes passwords unrecoverable.
 - On API < 30 MainActivity is singleTask and relies on onNewIntent; the navbar's init-time shortcut
   check doesn't re-fire for an already-open app — same limitation as the built-in generator shortcut.

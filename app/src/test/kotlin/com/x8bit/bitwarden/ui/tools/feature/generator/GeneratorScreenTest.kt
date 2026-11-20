@@ -2055,9 +2055,37 @@ class GeneratorScreenTest : BitwardenComposeTest() {
             .assertContentDescriptionEquals("Show")
             .performClick()
             .assertContentDescriptionEquals("Hide")
+    }
+
+    @Test
+    fun `passgen salt eye toggles when the salt is empty`() {
+        updateState(DEFAULT_STATE.copy(selectedType = PassgenMainType(salt = "")))
+
         composeTestRule
-            .onNodeWithContentDescription("Copy salt")
-            .assertDoesNotExist()
+            .onNodeWithTag("PassgenSaltShowButton")
+            .performScrollTo()
+            .performClick()
+            .assertContentDescriptionEquals("Hide")
+    }
+
+    @Test
+    fun `passgen salt is masked again after leaving and returning to the passgen type`() {
+        updateState(DEFAULT_STATE.copy(selectedType = PassgenMainType(salt = "salt")))
+        composeTestRule
+            .onNodeWithTag("PassgenSaltShowButton")
+            .performScrollTo()
+            .performClick()
+            .assertContentDescriptionEquals("Hide")
+
+        updateState(DEFAULT_STATE)
+        // Let the passgen content actually leave composition before returning to it.
+        composeTestRule.waitForIdle()
+        updateState(DEFAULT_STATE.copy(selectedType = PassgenMainType(salt = "salt")))
+
+        composeTestRule
+            .onNodeWithTag("PassgenSaltShowButton")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Show")
     }
 
     //endregion Passgen Tests
