@@ -40,7 +40,4 @@ sealed class PassgenAction : GeneratorAction.MainType() {
 
     /** User tapped copy on the random passphrase used. */
     data object CopyPassphraseUsedClick : PassgenAction()
-
-    /** User tapped copy on the salt. */
-    data object CopySaltClick : PassgenAction()
 }

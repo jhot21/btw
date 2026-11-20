@@ -95,9 +95,7 @@ fun PassgenMainType.reduce(action: PassgenAction): PassgenMainType {
             passphraseUsed = if (action.value.isEmpty()) "" else base.passphraseUsed,
         )
 
-        PassgenAction.CopyPassphraseUsedClick,
-        PassgenAction.CopySaltClick,
-            -> this
+        PassgenAction.CopyPassphraseUsedClick -> this
     }
 }
 

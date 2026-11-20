@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -94,23 +98,22 @@ fun PassgenContent(
                 },
             )
         }
-        BitwardenTextField(
+        // Local state on purpose: it is dropped when the passgen tab leaves composition, so the
+        // salt is masked again on every return.
+        var showSalt by remember { mutableStateOf(false) }
+        BitwardenPasswordField(
             label = stringResource(R.string.passgen_salt),
             value = state.salt,
             onValueChange = { onAction(PassgenAction.SaltChange(it)) },
+            showPassword = showSalt,
+            showPasswordChange = { showSalt = it },
             supportingText = stringResource(R.string.passgen_salt_hint),
             cardStyle = CardStyle.Bottom,
             // Disables autocorrect/suggestions so the salt can't be silently altered.
             keyboardType = KeyboardType.Password,
-            textFieldTestTag = "PassgenSaltField",
+            showPasswordTestTag = "PassgenSaltShowButton",
+            passwordFieldTestTag = "PassgenSaltField",
             modifier = Modifier.fillMaxWidth(),
-            actions = {
-                BitwardenStandardIconButton(
-                    vectorIconRes = BitwardenDrawable.ic_copy,
-                    contentDescription = stringResource(R.string.passgen_copy_salt),
-                    onClick = { onAction(PassgenAction.CopySaltClick) },
-                )
-            },
         )
         Spacer(modifier = Modifier.height(8.dp))
 

@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher.Companion.expectValue
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -2040,6 +2041,23 @@ class GeneratorScreenTest : BitwardenComposeTest() {
             .performScrollTo()
             .performTextInput("s")
         verify { viewModel.trySendAction(PassgenAction.SaltChange("s")) }
+    }
+
+    @Test
+    fun `passgen salt is masked by default and can be revealed`() {
+        updateState(
+            DEFAULT_STATE.copy(selectedType = PassgenMainType(salt = "salt")),
+        )
+
+        composeTestRule
+            .onNodeWithTag("PassgenSaltShowButton")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Show")
+            .performClick()
+            .assertContentDescriptionEquals("Hide")
+        composeTestRule
+            .onNodeWithContentDescription("Copy salt")
+            .assertDoesNotExist()
     }
 
     //endregion Passgen Tests
